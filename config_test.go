@@ -25,6 +25,23 @@ Command = a_command
 [2ndApplication]
 Name=3rdapplication
 cOmmAnd= my_command`)
+var validIniFileNoFilenames []byte = []byte(
+	`[Global]
+Background = 
+
+[random name]
+Name = application
+Image =
+imageHeight= 80%
+ImAgewidth=20px
+CommAnd =
+
+[2ndApplication]
+Name=2ndapplication
+Command =
+[2ndApplication]
+Name=3rdapplication
+cOmmAnd=`)
 var invalidInifileMultipleGlobal []byte = []byte(
 	`[Global]
 background=
@@ -36,9 +53,18 @@ Name= application
 Command =command
 invalidKey = value
 `)
-var invalidIniNoEntries []byte = []byte(
+var invalidIniFileNoEntries []byte = []byte(
 	`[Global]
 Background = my_background`)
+var invalidIniFileSyntaxErrors []byte = []byte(
+	`[Global]
+background =
+
+[app]
+Image =
+Command =
+ImageWidth = %200
+ImageHeight= invalid`)
 
 // compareSlices checks whether two slices contain the same elements
 // disregarding order
@@ -124,27 +150,27 @@ func TestParseConfigFile(t *testing.T) {
 func TestValidateMeasurement(t *testing.T) {
 	tests := []struct {
 		name      string
-		input     entryMeasurement
+		input     measurement
 		wantError bool
 	}{
-		{"%52", entryMeasurement("%52"), false},
-		{"%5", entryMeasurement("%5"), false},
-		{"%100", entryMeasurement("%100"), false},
-		{"52%", entryMeasurement("52%"), false},
-		{"5%", entryMeasurement("5%"), false},
-		{"100%", entryMeasurement("100%"), false},
-		{"2502px", entryMeasurement("2502px"), false},
-		{"1px", entryMeasurement("1px"), false},
-		{"", entryMeasurement(""), false},
-		{"20p", entryMeasurement("20p"), true},
-		{"55", entryMeasurement("55"), true},
-		{"%155", entryMeasurement("%155"), true},
-		{"155%", entryMeasurement("155%"), true},
-		{"%-15", entryMeasurement("%-15"), true},
-		{"-15%", entryMeasurement("-15%"), true},
-		{"%0", entryMeasurement("%0"), true},
-		{"0%", entryMeasurement("0%"), true},
-		{"word", entryMeasurement("word"), true},
+		{"%52", measurement("%52"), false},
+		{"%5", measurement("%5"), false},
+		{"%100", measurement("%100"), false},
+		{"52%", measurement("52%"), false},
+		{"5%", measurement("5%"), false},
+		{"100%", measurement("100%"), false},
+		{"2502px", measurement("2502px"), false},
+		{"1px", measurement("1px"), false},
+		{"", measurement(""), false},
+		{"20p", measurement("20p"), true},
+		{"55", measurement("55"), true},
+		{"%155", measurement("%155"), true},
+		{"155%", measurement("155%"), true},
+		{"%-15", measurement("%-15"), true},
+		{"-15%", measurement("-15%"), true},
+		{"%0", measurement("%0"), true},
+		{"0%", measurement("0%"), true},
+		{"word", measurement("word"), true},
 	}
 
 	for i := range tests {
@@ -160,14 +186,15 @@ func TestValidateMeasurement(t *testing.T) {
 	}
 }
 
-func TestValidateEntries(t *testing.T) {
+func TestValidateConfig(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     []byte
 		wantError bool
 	}{
-		{"valid INI", validIniFile, false},
-		{"INI without any app entries", invalidIniNoEntries, true},
+		{"valid INI", validIniFileNoFilenames, false},
+		{"invalid INI with fields that shouldn't validate", invalidIniFileSyntaxErrors, true},
+		{"INI without any app entries", invalidIniFileNoEntries, true},
 	}
 
 	for i := range tests {
@@ -183,18 +210,17 @@ func TestValidateEntries(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			result, _ := parseConfigFile(ini)
-			// remove images from the entries, they should be tested separately
-			for i := range result.entries {
-				result.entries[i].Image = ""
+			conf, err := parseConfigFile(ini)
+			if err != nil {
+				t.Fatal(err)
 			}
 
-			err = validateEntries(result.entries)
+			err = validateConfig(conf)
 
 			if tests[i].wantError && err == nil {
-				t.Errorf("validating %+v should fail but didn't", result.entries)
+				t.Errorf("validating %+v should fail but didn't", conf)
 			} else if !tests[i].wantError && err != nil {
-				t.Errorf("%+v should validate but produced error %s", result.entries, err)
+				t.Errorf("%+v should validate but produced error %s", conf, err)
 			}
 		})
 	}
@@ -224,7 +250,7 @@ func TestValidateImage(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			img := entryImage(tmpFile.Name())
+			img := image(tmpFile.Name())
 			err = img.validate()
 
 			if (err != nil) != tests[i].wantError {

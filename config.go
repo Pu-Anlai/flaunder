@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -14,18 +15,20 @@ import (
 )
 
 type entry struct {
-	Name        string
-	Image       entryImage
-	ImageHeight entryMeasurement
-	ImageWidth  entryMeasurement
-	Command     string
+	Name           string
+	Image          image
+	ImageHeight    measurement
+	imageHeightAbs int
+	ImageWidth     measurement
+	imageWidthAbs  int
+	Command        string
 }
 
-type entryImage string
+type image string
 
 // validate returns nil if img points to a supported image file, otherwise
 // it returns an appropriate error
-func (img *entryImage) validate() error {
+func (img *image) validate() error {
 	imgStr := string(*img)
 	// not providing an image is allowed:
 	if imgStr == "" {
@@ -42,10 +45,10 @@ func (img *entryImage) validate() error {
 	return nil
 }
 
-type entryMeasurement string
+type measurement string
 
-// validate
-func (m *entryMeasurement) validate() error {
+// validate makes sure entryMeasurement follows one of the allowed patterns
+func (m *measurement) validate() error {
 	parseError := fmt.Errorf("invalid geometry value %q", *m)
 	if len(string(*m)) == 1 {
 		return parseError
@@ -77,21 +80,32 @@ func (m *entryMeasurement) validate() error {
 	return nil
 }
 
-type entryOption interface {
+type option interface {
 	validate() error
 }
 
-// validateEntryOption runs validate() on entryOption
-func validateEntryOption(eO entryOption) error {
-	if err := eO.validate(); err != nil {
-		return err
-	} else {
-		return nil
+// readIniFile reads an ini file with a set of preset options
+func readIniFile(path string) (*ini.File, error) {
+	f, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
 	}
+
+	ini, err := ini.LoadSources(
+		ini.LoadOptions{
+			AllowNonUniqueSections: true,
+			Insensitive:            true,
+		},
+		f)
+	if err != nil {
+		return nil, err
+	}
+
+	return ini, nil
 }
 
 type settings struct {
-	Background string
+	Background image
 }
 
 type config struct {
@@ -122,7 +136,7 @@ func readIntoStruct[T any](sec *ini.Section, dst *T) error {
 	return nil
 }
 
-// parseConfig reads confFile and returns a config struct containing all app
+// parseConfigFile reads confFile and returns a config struct containing all app
 // entries as well as general settings. If there any errors are encountered when
 // parsing the file, an error will be returned.
 func parseConfigFile(confFile *ini.File) (*config, error) {
@@ -151,24 +165,65 @@ func parseConfigFile(confFile *ini.File) (*config, error) {
 	return &c, nil
 }
 
-// validateEntries makes sure that every entry in slice is a valid reference to
-// an existing application. If it is not, an error is returned.
-func validateEntries(e []entry) error {
-	if len(e) == 0 {
+// validateConfig validates settings and all entries in conf
+func validateConfig(conf *config) error {
+	if err := validateSettings(conf.settings); err != nil {
+		return err
+	}
+	if len(conf.entries) == 0 {
 		return errors.New("at least one application must be specified in config")
 	}
 
-	for i := range e {
-		entryOptions := []entryOption{
-			&e[i].ImageHeight,
-			&e[i].ImageWidth,
-			&e[i].Image,
+	for i := range conf.entries {
+		if err := validateSettings(&conf.entries[i]); err != nil {
+			return err
 		}
-		for j := range entryOptions {
-			if err := entryOptions[j].validate(); err != nil {
+	}
+	return nil
+}
+
+// validateSettings runs validate on all option fields in the object c
+func validateSettings[T settings | entry](s *T) error {
+	v := reflect.ValueOf(s).Elem()
+	// t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		if !f.CanInterface() {
+			continue
+		}
+		// we're *only* supporting validate on pointer receivers so skip
+		// non-pointers
+		if !f.CanAddr() {
+			continue
+		}
+
+		if opt, ok := f.Addr().Interface().(option); ok {
+			if err := opt.validate(); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// getConfig reads the config file at path, creates a config struct based on its
+// content and returns a pointer to the config
+func getConfig() (*config, error) {
+	home, err := os.UserConfigDir()
+	if err != nil {
+		return nil, err
+	}
+	ini, err := readIniFile(filepath.Join(home, "fyne-idim", "config"))
+	if err != nil {
+		return nil, err
+	}
+	conf, err := parseConfigFile(ini)
+	if err != nil {
+		return nil, err
+	}
+	if err = validateConfig(conf); err != nil {
+		return nil, err
+	}
+
+	return conf, nil
 }
