@@ -14,6 +14,33 @@ import (
 	"gopkg.in/ini.v1"
 )
 
+type iniParseError struct {
+	key     string
+	value   string
+	section string
+}
+
+func (e *iniParseError) Error() string {
+	if e.section == "" {
+		return fmt.Sprintf("%s: cannot parse key %q (value %q)", e.section, e.key, e.value)
+	} else {
+		return fmt.Sprintf("cannot parse key %q (value %q)", e.key, e.value)
+	}
+}
+
+type fileAccessError struct {
+	path     string
+	fileType string
+}
+
+func (e *fileAccessError) Error() string {
+	if e.fileType == "" {
+		return fmt.Sprintf("cannot access file %q", e.path)
+	} else {
+		return fmt.Sprintf("cannot access %s file %q", e.fileType, e.path)
+	}
+}
+
 type entry struct {
 	Name           string
 	Image          image
@@ -37,10 +64,10 @@ func (img *image) validate() error {
 
 	buf, err := os.ReadFile(imgStr)
 	if err != nil {
-		return fmt.Errorf("file %q appears unaccesible", imgStr)
+		return &fileAccessError{path: imgStr}
 	}
 	if !filetype.IsImage(buf) || svg.IsSVG(buf) {
-		return fmt.Errorf("file %q is not an image file", imgStr)
+		return &fileAccessError{path: imgStr, fileType: "image"}
 	}
 	return nil
 }
@@ -49,9 +76,8 @@ type measurement string
 
 // validate makes sure entryMeasurement follows one of the allowed patterns
 func (m *measurement) validate() error {
-	parseError := fmt.Errorf("invalid geometry value %q", *m)
 	if len(string(*m)) == 1 {
-		return parseError
+		return &iniParseError{value: string(*m)}
 	}
 
 	mStr := string(*m)
@@ -61,20 +87,20 @@ func (m *measurement) validate() error {
 	} else if mStr[0] == '%' {
 		uI, _ := strconv.ParseUint(mStr[1:], 10, 32)
 		if uI == 0 || uI > 100 {
-			return parseError
+			return &iniParseError{value: string(*m)}
 		}
 	} else if mStr[len(mStr)-1:] == "%" {
 		uI, _ := strconv.ParseUint(mStr[:len(mStr)-1], 10, 32)
 		if uI == 0 || uI > 100 {
-			return parseError
+			return &iniParseError{value: string(*m)}
 		}
 	} else if mStr[len(mStr)-2:] == "px" {
 		uI, _ := strconv.ParseUint(mStr[:len(mStr)-2], 10, 32)
 		if uI == 0 {
-			return parseError
+			return &iniParseError{value: string(*m)}
 		}
 	} else {
-		return parseError
+		return &iniParseError{value: string(*m)}
 	}
 
 	return nil
@@ -88,7 +114,7 @@ type option interface {
 func readIniFile(path string) (*ini.File, error) {
 	f, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, &fileAccessError{path: path, fileType: "ini"}
 	}
 
 	ini, err := ini.LoadSources(
@@ -98,7 +124,7 @@ func readIniFile(path string) (*ini.File, error) {
 		},
 		f)
 	if err != nil {
-		return nil, err
+		return nil, &fileAccessError{path: path, fileType: "ini"}
 	}
 
 	return ini, nil
@@ -125,7 +151,7 @@ func readIntoStruct[T any](sec *ini.Section, dst *T) error {
 	for _, key := range sec.Keys() {
 		field, ok := fieldMap[key.Name()]
 		if !ok {
-			return fmt.Errorf("unknown key %s in section %s", key.Name(), sec.Name())
+			return &iniParseError{key: key.Name(), section: sec.Name()}
 		}
 		fieldVal := v.FieldByIndex(field.Index)
 		if fieldVal.Kind() != reflect.String {
@@ -185,7 +211,6 @@ func validateConfig(conf *config) error {
 // validateSettings runs validate on all option fields in the object c
 func validateSettings[T settings | entry](s *T) error {
 	v := reflect.ValueOf(s).Elem()
-	// t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
 		if !f.CanInterface() {
@@ -199,7 +224,7 @@ func validateSettings[T settings | entry](s *T) error {
 
 		if opt, ok := f.Addr().Interface().(option); ok {
 			if err := opt.validate(); err != nil {
-				return err
+				return &iniParseError{key: f.Type().Name(), value: f.String()}
 			}
 		}
 	}
