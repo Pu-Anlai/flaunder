@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/h2non/filetype"
-	svg "github.com/h2non/go-is-svg"
 	"gopkg.in/ini.v1"
 )
 
@@ -51,25 +49,15 @@ type entry struct {
 	Command        string
 }
 
-type image string
+type path string
 
-// validate returns nil if img points to a supported image file, otherwise
-// it returns an appropriate error
-func (img *image) validate() error {
-	imgStr := string(*img)
-	// not providing an image is allowed:
-	if imgStr == "" {
+// validate checks if path exists and returns an error if it doesn't
+func (p *path) validate() error {
+	if _, err := os.Stat(string(*p)); err != nil {
+		return &fileAccessError{path: string(*p)}
+	} else {
 		return nil
 	}
-
-	buf, err := os.ReadFile(imgStr)
-	if err != nil {
-		return &fileAccessError{path: imgStr}
-	}
-	if !filetype.IsImage(buf) || svg.IsSVG(buf) {
-		return &fileAccessError{path: imgStr, fileType: "image"}
-	}
-	return nil
 }
 
 type measurement string
@@ -132,6 +120,7 @@ func readIniFile(path string) (*ini.File, error) {
 
 type settings struct {
 	Background image
+	Font       path
 }
 
 type config struct {

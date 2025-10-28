@@ -259,3 +259,29 @@ func TestValidateImage(t *testing.T) {
 		})
 	}
 }
+
+func TestValidatePath(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "path-file-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	tests := []struct {
+		name      string
+		input     path
+		wantError bool
+	}{
+		{"existing path", path(tmpFile.Name()), false},
+		{"non-existing path", "/this-is-a-file-that-by-all-likelihood-does-not-exist", true},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			err := tests[i].input.validate()
+			if (err != nil) != tests[i].wantError {
+				t.Errorf("wantError: %v but produced error %v", tests[i].wantError, err)
+			}
+		})
+	}
+}
