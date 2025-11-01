@@ -9,35 +9,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/h2non/filetype"
 	"gopkg.in/ini.v1"
 )
-
-type iniParseError struct {
-	key     string
-	value   string
-	section string
-}
-
-func (e *iniParseError) Error() string {
-	if e.section == "" {
-		return fmt.Sprintf("%s: cannot parse key %q (value %q)", e.section, e.key, e.value)
-	} else {
-		return fmt.Sprintf("cannot parse key %q (value %q)", e.key, e.value)
-	}
-}
-
-type fileAccessError struct {
-	path     string
-	fileType string
-}
-
-func (e *fileAccessError) Error() string {
-	if e.fileType == "" {
-		return fmt.Sprintf("cannot access file %q", e.path)
-	} else {
-		return fmt.Sprintf("cannot access %s file %q", e.fileType, e.path)
-	}
-}
 
 type entry struct {
 	Name           string
@@ -49,15 +23,24 @@ type entry struct {
 	Command        string
 }
 
-type path string
+type font string
 
 // validate checks if path exists and returns an error if it doesn't
-func (p *path) validate() error {
-	if _, err := os.Stat(string(*p)); err != nil {
-		return &fileAccessError{path: string(*p)}
-	} else {
-		return nil
+func (f *font) validate() error {
+	fStr := string(*f)
+	fontFile, err := os.ReadFile(fStr)
+	if err != nil {
+		return &fileAccessError{
+			path: fStr,
+		}
 	}
+	if !filetype.IsFont(fontFile) {
+		return &fileAccessError{
+			path:     fStr,
+			fileType: "font",
+		}
+	}
+	return nil
 }
 
 type measurement string
@@ -120,7 +103,7 @@ func readIniFile(path string) (*ini.File, error) {
 
 type settings struct {
 	Background image
-	Font       path
+	Font       font
 }
 
 type config struct {
