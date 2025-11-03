@@ -28,3 +28,15 @@ func (e *fileAccessError) Error() string {
 		return fmt.Sprintf("cannot access %s file %q", e.fileType, e.path)
 	}
 }
+
+type dimensionError struct {
+	entryName string
+}
+
+func (e *dimensionError) Error() string {
+	if e.entryName == "" {
+		return fmt.Sprintf("global settings do not leave enough space for drawing elements")
+	} else {
+		return fmt.Sprintf("settings for %q do not leave enough space for drawing all its elements", e.entryName)
+	}
+}
