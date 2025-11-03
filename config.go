@@ -10,68 +10,84 @@ import (
 	"strings"
 
 	"github.com/h2non/filetype"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"gopkg.in/ini.v1"
 )
 
 type entry struct {
-	Name           string
-	Image          image
-	ImageHeight    measurement
-	imageHeightAbs int
-	ImageWidth     measurement
-	imageWidthAbs  int
-	Command        string
+	Name       string
+	Icon       icon
+	IconHeight measurement
+	Command    string
 }
 
-type font string
+type font struct {
+	path   string
+	height float64
+	face   *text.GoTextFace
+}
+
+func (f *font) setBaseField(v string) {
+	f.path = v
+}
 
 // validate checks if path exists and returns an error if it doesn't
 func (f *font) validate() error {
-	fStr := string(*f)
-	fontFile, err := os.ReadFile(fStr)
+	// not providing a font is allowed
+	if f.path == "" {
+		return nil
+	}
+
+	fontFile, err := os.ReadFile(f.path)
 	if err != nil {
 		return &fileAccessError{
-			path: fStr,
+			path: f.path,
 		}
 	}
 	if !filetype.IsFont(fontFile) {
 		return &fileAccessError{
-			path:     fStr,
+			path:     f.path,
 			fileType: "font",
 		}
 	}
+
 	return nil
 }
 
-type measurement string
+type measurement struct {
+	value string
+	abs   float64
+}
+
+func (m *measurement) setBaseField(v string) {
+	m.value = v
+}
 
 // validate makes sure entryMeasurement follows one of the allowed patterns
 func (m *measurement) validate() error {
-	if len(string(*m)) == 1 {
-		return &iniParseError{value: string(*m)}
+	if len(m.value) == 1 {
+		return &iniParseError{value: m.value}
 	}
 
-	mStr := string(*m)
-
-	if mStr == "" {
+	if m.value == "" {
 		return nil
-	} else if mStr[0] == '%' {
-		uI, _ := strconv.ParseUint(mStr[1:], 10, 32)
+	} else if m.value[0] == '%' {
+		uI, _ := strconv.ParseUint(m.value[1:], 10, 32)
 		if uI == 0 || uI > 100 {
-			return &iniParseError{value: string(*m)}
+			return &iniParseError{value: m.value}
 		}
-	} else if mStr[len(mStr)-1:] == "%" {
-		uI, _ := strconv.ParseUint(mStr[:len(mStr)-1], 10, 32)
+	} else if m.value[len(m.value)-1:] == "%" {
+		uI, _ := strconv.ParseUint(m.value[:len(m.value)-1], 10, 32)
 		if uI == 0 || uI > 100 {
-			return &iniParseError{value: string(*m)}
+			return &iniParseError{value: m.value}
 		}
-	} else if mStr[len(mStr)-2:] == "px" {
-		uI, _ := strconv.ParseUint(mStr[:len(mStr)-2], 10, 32)
+	} else if m.value[len(m.value)-2:] == "px" {
+		uI, _ := strconv.ParseUint(m.value[:len(m.value)-2], 10, 32)
 		if uI == 0 {
-			return &iniParseError{value: string(*m)}
+			return &iniParseError{value: m.value}
 		}
 	} else {
-		return &iniParseError{value: string(*m)}
+		return &iniParseError{value: m.value}
 	}
 
 	return nil
@@ -79,6 +95,10 @@ func (m *measurement) validate() error {
 
 type option interface {
 	validate() error
+}
+
+type complexOption interface {
+	setBaseField(string)
 }
 
 // readIniFile reads an ini file with a set of preset options
@@ -102,8 +122,12 @@ func readIniFile(path string) (*ini.File, error) {
 }
 
 type settings struct {
-	Background image
-	Font       font
+	Background                icon
+	Font                      font
+	FontSize                  int
+	ImageTitlePadding         measurement
+	TopPadding, BottomPadding measurement
+	LeftPadding, RightPadding measurement
 }
 
 type config struct {
@@ -114,22 +138,47 @@ type config struct {
 // readIntoStruct reads an ini section sec into a struct. If the section
 // contains a key that does not match a struct field, an error will be returned.
 func readIntoStruct[T any](sec *ini.Section, dst *T) error {
+	// get the value that dst points to
 	v := reflect.ValueOf(dst).Elem()
-	fieldMap := make(map[string]reflect.StructField, 7)
+	// create a map where we can look up fields of the struct dst by their names
 	fields := reflect.VisibleFields(v.Type())
+	fieldMap := make(map[string]reflect.StructField, len(fields))
 	for i := range fields {
 		fieldMap[strings.ToLower(fields[i].Name)] = fields[i]
 	}
+
+	// loop over the ini section that was passed (sec)
 	for _, key := range sec.Keys() {
+		// if there is an ini key that is not in our struct dst, return an error
 		field, ok := fieldMap[key.Name()]
 		if !ok {
 			return &iniParseError{key: key.Name(), section: sec.Name()}
 		}
+		// now that we have the StructField corresponding to the key name in the
+		// ini file, we can look up the value of that field in our instance v
 		fieldVal := v.FieldByIndex(field.Index)
-		if fieldVal.Kind() != reflect.String {
-			panic(fmt.Sprintf("wrong field type: %+v", field))
+		// we're supporting string and int fields as well as those implementing
+		// complexOption
+		switch fieldVal.Kind() {
+		case reflect.String:
+			fieldVal.SetString(key.Value())
+		case reflect.Int:
+			if val, err := strconv.Atoi(key.Value()); err != nil {
+				return &iniParseError{key: key.Name(), section: sec.Name()}
+			} else {
+				fieldVal.SetInt(int64(val))
+			}
+		default:
+			// if the field is not a built-in type, check if it implements
+			// complexOption
+			if opt, ok := fieldVal.Addr().Interface().(complexOption); ok {
+				opt.setBaseField(key.Value())
+			} else {
+				// if none of that works, we'll panic, this should be
+				// preventable on the code level
+				panic(fmt.Sprintf("wrong field type: %+v", field))
+			}
 		}
-		fieldVal.SetString(key.Value())
 	}
 	return nil
 }

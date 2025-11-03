@@ -11,12 +11,15 @@ import (
 var validIniFile []byte = []byte(
 	`[Global]
 Background = my_background
+TopPadding = 30%
+BottomPadding = 34px
+Leftpadding=1%
+rightpadding=200px
 
 [random name]
 Name = application
-Image =image_name
-imageHeight= 80%
-ImAgewidth=20px
+Icon =image_name
+icOnheight= 80%
 CommAnd = /usr/bin/bla
 
 [2ndApplication]
@@ -31,9 +34,8 @@ Background =
 
 [random name]
 Name = application
-Image =
-imageHeight= 80%
-ImAgewidth=20px
+Icon =
+ICONHeight= 80%
 CommAnd =
 
 [2ndApplication]
@@ -61,10 +63,9 @@ var invalidIniFileSyntaxErrors []byte = []byte(
 background =
 
 [app]
-Image =
+Icon =
 Command =
-ImageWidth = %200
-ImageHeight= invalid`)
+IconHeight= invalid`)
 
 // compareSlices checks whether two slices contain the same elements
 // disregarding order
@@ -86,15 +87,34 @@ func compareSlices[T comparable](s1, s2 []T) bool {
 func TestParseConfigFile(t *testing.T) {
 	validIniFileConfig := config{
 		settings: &settings{
-			Background: "my_background",
+			Background: icon{
+				path:  "my_background",
+				image: nil},
+			TopPadding: measurement{
+				value: "30%",
+				abs:   0},
+			BottomPadding: measurement{
+				value: "34px",
+				abs:   0},
+			LeftPadding: measurement{
+				value: "1%",
+				abs:   0},
+			RightPadding: measurement{
+				value: "200px",
+				abs:   0},
 		},
 		entries: []entry{
 			{
-				Name:        "application",
-				Image:       "image_name",
-				ImageHeight: "80%",
-				ImageWidth:  "20px",
-				Command:     "/usr/bin/bla",
+				Name: "application",
+				Icon: icon{
+					path:  "image_name",
+					image: nil,
+				},
+				IconHeight: measurement{
+					value: "80%",
+					abs:   0,
+				},
+				Command: "/usr/bin/bla",
 			},
 			{
 				Name:    "2ndapplication",
@@ -153,24 +173,24 @@ func TestValidateMeasurement(t *testing.T) {
 		input     measurement
 		wantError bool
 	}{
-		{"%52", measurement("%52"), false},
-		{"%5", measurement("%5"), false},
-		{"%100", measurement("%100"), false},
-		{"52%", measurement("52%"), false},
-		{"5%", measurement("5%"), false},
-		{"100%", measurement("100%"), false},
-		{"2502px", measurement("2502px"), false},
-		{"1px", measurement("1px"), false},
-		{"", measurement(""), false},
-		{"20p", measurement("20p"), true},
-		{"55", measurement("55"), true},
-		{"%155", measurement("%155"), true},
-		{"155%", measurement("155%"), true},
-		{"%-15", measurement("%-15"), true},
-		{"-15%", measurement("-15%"), true},
-		{"%0", measurement("%0"), true},
-		{"0%", measurement("0%"), true},
-		{"word", measurement("word"), true},
+		{"%52", measurement{value: "%52", abs: 0}, false},
+		{"%5", measurement{value: "%5", abs: 0}, false},
+		{"%100", measurement{value: "%100", abs: 0}, false},
+		{"52%", measurement{value: "52%", abs: 0}, false},
+		{"5%", measurement{value: "5%", abs: 0}, false},
+		{"100%", measurement{value: "100%", abs: 0}, false},
+		{"2502px", measurement{value: "2502px", abs: 0}, false},
+		{"1px", measurement{value: "1px", abs: 0}, false},
+		{"", measurement{value: "", abs: 0}, false},
+		{"20p", measurement{value: "20p", abs: 0}, true},
+		{"55", measurement{value: "55", abs: 0}, true},
+		{"%155", measurement{value: "%155", abs: 0}, true},
+		{"155%", measurement{value: "155%", abs: 0}, true},
+		{"%-15", measurement{value: "%-15", abs: 0}, true},
+		{"-15%", measurement{value: "-15%", abs: 0}, true},
+		{"%0", measurement{value: "%0", abs: 0}, true},
+		{"0%", measurement{value: "0%", abs: 0}, true},
+		{"word", measurement{value: "word", abs: 0}, true},
 	}
 
 	for i := range tests {
@@ -178,9 +198,9 @@ func TestValidateMeasurement(t *testing.T) {
 
 			err := tests[i].input.validate()
 			if tests[i].wantError && err == nil {
-				t.Errorf("measurement %q should not parse correctly but did", tests[i].input)
+				t.Errorf("measurement %v should not parse correctly but did", tests[i].input)
 			} else if !tests[i].wantError && err != nil {
-				t.Errorf("measurement %q should parse but returned error %s", tests[i].input, err)
+				t.Errorf("measurement %v should parse but returned error %s", tests[i].input, err)
 			}
 		})
 	}
@@ -234,7 +254,6 @@ func TestValidateImage(t *testing.T) {
 	}{
 		{"valid png file", []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}, false},
 		{"valid jpeg file", []byte{0xFF, 0xD8, 0xFF, 0xE0}, false},
-		// {"valid bmp file", []byte{0x42, 0x4D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x36, 0x00, 0x00, 0x00}, false},
 		{"invalid file", []byte("not an image"), true},
 	}
 
@@ -250,7 +269,7 @@ func TestValidateImage(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			img := image(tmpFile.Name())
+			img := icon{path: tmpFile.Name()}
 			err = img.validate()
 
 			if (err != nil) != tests[i].wantError {
