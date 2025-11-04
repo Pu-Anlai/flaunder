@@ -1,14 +1,10 @@
 package main
 
 import (
-	"bytes"
-	"io"
 	"math"
-	"os"
 	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
@@ -29,43 +25,12 @@ type entryImg struct {
 	err           *error
 }
 
-// initFont loads the font at path and returns a pointer to a GoTextFace struct
-// created from the font and the passed font size
-func (a *app) initFont() error {
-	var r io.Reader
-	if a.settings.Font.path != "" {
-		// this should be safe as the path has already been validated, even if
-		// it doesn't, we can catch the error in the next step
-		fData, _ := os.ReadFile(a.settings.Font.path)
-		r = bytes.NewReader(fData)
-	} else {
-		r = bytes.NewReader(fonts.MPlus1pRegular_ttf)
+func (a *app) Layout(winW, winH int) (int, int) {
+	if (winW != a.scrW) || (winH != a.scrH) {
+		a.scrW, a.scrH = winW, winH
+		// TODO: handle error possibly thrown by this:
+		a.generateEntryImgs()
 	}
-
-	fSource, err := text.NewGoTextFaceSource(r)
-	if err != nil {
-		// unlikely to trigger as the filetype package should have confirmed
-		// this to be a valid font
-		return err
-	}
-
-	size := float64(a.settings.FontSize)
-	if size == 0 {
-		size = 18
-	}
-
-	a.settings.Font.face = &text.GoTextFace{
-		Source: fSource,
-		Size:   size,
-	}
-	metrics := a.settings.Font.face.Metrics()
-	a.settings.Font.height = metrics.HAscent + metrics.HDescent
-
-	return nil
-}
-
-func (a *app) Layout(winW, winH int) (scrW, scrH int) {
-	a.scrW, a.scrH = winW, winH
 	return winW, winH
 }
 
@@ -188,7 +153,6 @@ func (a *app) generateEntryImgs() error {
 		go a.getEntryImg(&a.entries[i], eImg, &wg)
 	}
 	wg.Wait()
-	// TODO: sort a.images
 	return nil
 }
 
@@ -207,10 +171,6 @@ func (a *app) validateDimensions() error {
 // available
 func (a *app) init() error {
 	// prime the font field
-	err := a.initFont()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

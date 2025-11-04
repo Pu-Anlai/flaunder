@@ -173,9 +173,6 @@ func TestValidateMeasurement(t *testing.T) {
 		input     measurement
 		wantError bool
 	}{
-		{"%52", measurement{value: "%52", abs: 0}, false},
-		{"%5", measurement{value: "%5", abs: 0}, false},
-		{"%100", measurement{value: "%100", abs: 0}, false},
 		{"52%", measurement{value: "52%", abs: 0}, false},
 		{"5%", measurement{value: "5%", abs: 0}, false},
 		{"100%", measurement{value: "100%", abs: 0}, false},
@@ -184,11 +181,8 @@ func TestValidateMeasurement(t *testing.T) {
 		{"", measurement{value: "", abs: 0}, false},
 		{"20p", measurement{value: "20p", abs: 0}, true},
 		{"55", measurement{value: "55", abs: 0}, true},
-		{"%155", measurement{value: "%155", abs: 0}, true},
 		{"155%", measurement{value: "155%", abs: 0}, true},
-		{"%-15", measurement{value: "%-15", abs: 0}, true},
 		{"-15%", measurement{value: "-15%", abs: 0}, true},
-		{"%0", measurement{value: "%0", abs: 0}, true},
 		{"0%", measurement{value: "0%", abs: 0}, true},
 		{"word", measurement{value: "word", abs: 0}, true},
 	}

@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/h2non/filetype"
-	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"gopkg.in/ini.v1"
 )
 
@@ -21,84 +19,8 @@ type entry struct {
 	Command    string
 }
 
-type font struct {
-	path   string
-	height float64
-	face   *text.GoTextFace
-}
-
-func (f *font) setBaseField(v string) {
-	f.path = v
-}
-
-// validate checks if path exists and returns an error if it doesn't
-func (f *font) validate() error {
-	// not providing a font is allowed
-	if f.path == "" {
-		return nil
-	}
-
-	fontFile, err := os.ReadFile(f.path)
-	if err != nil {
-		return &fileAccessError{
-			path: f.path,
-		}
-	}
-	if !filetype.IsFont(fontFile) {
-		return &fileAccessError{
-			path:     f.path,
-			fileType: "font",
-		}
-	}
-
-	return nil
-}
-
-type measurement struct {
-	value string
-	abs   float64
-}
-
-func (m *measurement) setBaseField(v string) {
-	m.value = v
-}
-
-// validate makes sure entryMeasurement follows one of the allowed patterns
-func (m *measurement) validate() error {
-	if len(m.value) == 1 {
-		return &iniParseError{value: m.value}
-	}
-
-	if m.value == "" {
-		return nil
-	} else if m.value[0] == '%' {
-		uI, _ := strconv.ParseUint(m.value[1:], 10, 32)
-		if uI == 0 || uI > 100 {
-			return &iniParseError{value: m.value}
-		}
-	} else if m.value[len(m.value)-1:] == "%" {
-		uI, _ := strconv.ParseUint(m.value[:len(m.value)-1], 10, 32)
-		if uI == 0 || uI > 100 {
-			return &iniParseError{value: m.value}
-		}
-	} else if m.value[len(m.value)-2:] == "px" {
-		uI, _ := strconv.ParseUint(m.value[:len(m.value)-2], 10, 32)
-		if uI == 0 {
-			return &iniParseError{value: m.value}
-		}
-	} else {
-		return &iniParseError{value: m.value}
-	}
-
-	return nil
-}
-
 type option interface {
 	validate() error
-}
-
-type complexOption interface {
-	setBaseField(string)
 }
 
 // readIniFile reads an ini file with a set of preset options
