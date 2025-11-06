@@ -8,26 +8,35 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
+type dimensions struct {
+	width, height int
+}
+
 type app struct {
-	mut        *sync.Mutex
-	settings   *settings
-	entries    []entry
-	images     []*entryImg
-	scrW, scrH int
+	mut         *sync.Mutex
+	settings    *settings
+	entries     []entry
+	images      []*entryImg
+	screenDim   dimensions
+	entryImgDim dimensions
 }
 
 type entryImg struct {
-	img           *ebiten.Image
-	name          string
-	height, width int
-	titleWidth    float64
-	imgTitPad     int
-	err           *error
+	img        *ebiten.Image
+	name       string
+	dim        dimensions
+	titleWidth float64
+	imgTitPad  int
+	err        *error
 }
 
 func (a *app) Layout(winW, winH int) (int, int) {
-	if (winW != a.scrW) || (winH != a.scrH) {
-		a.scrW, a.scrH = winW, winH
+	if (winW != a.screenDim.width) || (winH != a.screenDim.height) {
+		// save screen dimensions in app
+		a.screenDim.width, a.screenDim.height = winW, winH
+		// save entryImg dimensions in app
+		a.entryImgDim.height = winH - int(a.settings.TopPadding.abs) - int(a.settings.BottomPadding.abs)
+		a.entryImgDim.width = winW
 		// TODO: handle error possibly thrown by this:
 		a.generateEntryImgs()
 	}
@@ -45,7 +54,7 @@ func (a *app) Draw(screen *ebiten.Image) {
 // getTitleDrawX returns the correct origin point on the x axis for drawing the
 // title
 func getTitleDrawX(eImg *entryImg) float64 {
-	canvasWidth := float64(eImg.width)
+	canvasWidth := float64(eImg.dim.width)
 	var x float64
 	if eImg.titleWidth > canvasWidth {
 		x = 0 - ((eImg.titleWidth - canvasWidth) / 2)
@@ -83,9 +92,9 @@ func (a *app) drawIconOnEntryImg(e *entry, eImg *entryImg) {
 	// - y: available height for the image - image height, the resulting
 	//      difference divided by two
 	//      (canvasHeight - imageTitlePadding - titleHeight - imageHeight) / 2
-	iconX := (float64(eImg.width) - iconWidth) / 2
+	iconX := (float64(eImg.dim.width) - iconWidth) / 2
 	a.mut.Lock()
-	iconY := float64(eImg.height) - a.settings.ImageTitlePadding.abs
+	iconY := float64(eImg.dim.height) - a.settings.ImageTitlePadding.abs
 	a.mut.Unlock()
 	iconOpt.GeoM.Translate(iconX, iconY)
 	icon.DrawImage(eImg.img, iconOpt)
@@ -104,7 +113,7 @@ func (a *app) drawTitleOnEntryImg(e *entry, eImg *entryImg) {
 	//     canvasWidth - ((titleWidth - canvasWidth) / 2)
 	titleX := getTitleDrawX(eImg)
 	a.mut.Lock() // accessing app
-	titleY := float64(eImg.height) - a.settings.Font.height
+	titleY := float64(eImg.dim.height) - a.settings.Font.height
 	a.mut.Unlock()
 	titleOpt := &text.DrawOptions{}
 	titleOpt.GeoM.Translate(titleX, titleY)
@@ -117,7 +126,7 @@ func (a *app) drawTitleOnEntryImg(e *entry, eImg *entryImg) {
 // and fontHeight
 func (a *app) getEntryImg(e *entry, eImg *entryImg, wg *sync.WaitGroup) {
 	defer wg.Done()
-	eImg.img = ebiten.NewImage(eImg.width, eImg.height)
+	eImg.img = ebiten.NewImage(eImg.dim.width, eImg.dim.height)
 	a.drawIconOnEntryImg(e, eImg)
 	a.drawTitleOnEntryImg(e, eImg)
 	a.mut.Lock()
@@ -130,8 +139,8 @@ func (a *app) getEntryImg(e *entry, eImg *entryImg, wg *sync.WaitGroup) {
 func (a *app) newEntryImg(title string) *entryImg {
 	img := new(entryImg)
 	img.name = title
-	img.height = a.scrH - int(a.settings.TopPadding.abs) - int(a.settings.BottomPadding.abs)
-	img.width = a.scrW
+	img.dim.height = a.entryImgDim.height
+	img.dim.width = a.entryImgDim.width
 	img.imgTitPad = int(a.settings.ImageTitlePadding.abs)
 	img.titleWidth, _ = text.Measure(title, a.settings.Font.face, 0)
 	return img
@@ -159,7 +168,7 @@ func (a *app) generateEntryImgs() error {
 // validateDimensions checks if the provided dimensions leave enough room to
 // actually draw the required elements of each entry
 func (a *app) validateDimensions() error {
-	imgHeight := float64(a.scrH) - a.settings.Font.height - a.settings.TopPadding.abs - a.settings.BottomPadding.abs - a.settings.ImageTitlePadding.abs
+	imgHeight := float64(a.screenDim.height) - a.settings.Font.height - a.settings.TopPadding.abs - a.settings.BottomPadding.abs - a.settings.ImageTitlePadding.abs
 	if int(math.Round(imgHeight+0.5)) < 1 {
 		return &dimensionError{}
 	} else {
