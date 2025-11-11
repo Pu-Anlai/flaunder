@@ -40,3 +40,12 @@ func (e *dimensionError) Error() string {
 		return fmt.Sprintf("settings for %q do not leave enough space for drawing all its elements", e.entryName)
 	}
 }
+
+type fileDecodeError struct {
+	path     string
+	fileType string
+}
+
+func (e *fileDecodeError) Error() string {
+	return fmt.Sprintf("cannot decode file %q. valid %s file?", e.path, e.fileType)
+}

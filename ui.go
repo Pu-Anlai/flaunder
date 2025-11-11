@@ -78,10 +78,28 @@ func getIconDimensions(height float64, eImg *entryImg) (float64, float64) {
 	return width, height
 }
 
+// updateMeasurements should be calles whenever there is a layout change. it
+// will recalculate all measurement strings
+func (a *app) updateMeasurements() {
+	height := float64(a.screenDim.height)
+	var wg sync.WaitGroup
+	for i := range a.entries {
+		wg.Add(1)
+		a.entries[i].IconHeight.init(height, &wg)
+	}
+	// initiate all padding fields (without reflect for performance reasons)
+	wg.Add(5)
+	a.settings.ImageTitlePadding.init(height, &wg)
+	a.settings.TopPadding.init(height, &wg)
+	a.settings.BottomPadding.init(height, &wg)
+	a.settings.LeftPadding.init(height, &wg)
+	a.settings.RightPadding.init(height, &wg)
+}
+
 // drawIconOnEntryImg calculates the dimensions and position for the icon in
 // e and draws it onto entryImg
 func (a *app) drawIconOnEntryImg(e *entry, eImg *entryImg) {
-	icon := ebiten.NewImageFromImage(*e.Icon.image)
+	icon := ebiten.NewImageFromImage(e.Icon.image)
 	iconOpt := &ebiten.DrawImageOptions{}
 	iconWidth, iconHeight := getIconDimensions(e.IconHeight.abs, eImg)
 	iconOpt.GeoM.Scale(iconWidth, iconHeight)
@@ -179,7 +197,18 @@ func (a *app) validateDimensions() error {
 // init initializes the app struct so all values required for execution are
 // available
 func (a *app) init() error {
-	// prime the font field
+	// load image fields
+	for i := range a.entries {
+		if err := a.entries[i].Icon.init(); err != nil {
+			return err
+		}
+	}
+
+	// load font
+	if err := a.settings.Font.init(a); err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -8,20 +8,29 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/h2non/filetype"
 	svg "github.com/h2non/go-is-svg"
 	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/tdewolff/canvas"
+	"github.com/tdewolff/canvas/renderers/rasterizer"
 )
+
+const dpi float64 = 96
 
 type complexOption interface {
 	setBaseField(string)
 }
 
 type icon struct {
-	path  string
-	image *image.Image
+	path           string
+	image          image.Image
+	dim            dimensions
+	isVector       bool
+	vecCanvas      *canvas.Canvas
+	vecAspectRatio float64
 }
 
 type font struct {
@@ -52,10 +61,54 @@ func (i *icon) validate() error {
 		return &fileAccessError{path: i.path}
 	}
 
-	if !filetype.IsImage(buf) || svg.IsSVG(buf) {
+	if filetype.IsImage(buf) {
+		return nil
+	} else if svg.IsSVG(buf) {
+		i.isVector = true
+		return nil
+	} else {
 		return &fileAccessError{path: i.path, fileType: "image"}
 	}
+}
+
+func (i *icon) init() error {
+	f, err := os.Open(i.path)
+	if err != nil {
+		return &fileAccessError{path: i.path, fileType: "image"}
+	}
+	defer f.Close()
+
+	if i.isVector {
+		svgCanvas, err := canvas.ParseSVG(f)
+		if err != nil {
+			return &fileDecodeError{path: i.path, fileType: "svg"}
+		}
+		i.vecCanvas = svgCanvas
+		i.vecAspectRatio = svgCanvas.H / svgCanvas.W
+	} else {
+		img, ft, err := image.Decode(f)
+		if err != nil {
+			return &fileDecodeError{path: i.path, fileType: ft}
+		}
+		i.image = img
+		bounds := img.Bounds()
+		i.dim = dimensions{width: bounds.Dx(), height: bounds.Dy()}
+	}
 	return nil
+}
+
+// ensureRendered makes sure that an underlying svg file is rendered properly
+// given height and present in field i.image
+func (i *icon) ensureRendered(height float64) {
+	if !i.isVector {
+		return
+	}
+	width := height * i.vecAspectRatio
+	canv := canvas.New(width, height)
+	scaleX, scaleY := width/i.vecCanvas.W, height/i.vecCanvas.H
+
+	i.vecCanvas.RenderViewTo(canv, canvas.Identity.Scale(scaleX, scaleY))
+	i.image = rasterizer.Draw(canv, canvas.DPI(dpi), canvas.DefaultColorSpace)
 }
 
 func (f *font) init(a *app) error {
@@ -118,12 +171,13 @@ func (f *font) validate() error {
 	return nil
 }
 
-func (m *measurement) init(rel float64) {
+func (m *measurement) init(rel float64, wg *sync.WaitGroup) {
 	if m.value[len(m.value)-1:] == "%" {
 		m.abs, _ = strconv.ParseFloat(m.value[:len(m.value)-1], 10)
 	} else if m.value[len(m.value)-2:] == "px" {
 		m.abs, _ = strconv.ParseFloat(m.value[:len(m.value)-2], 10)
 	}
+	wg.Done()
 }
 
 func (m *measurement) setBaseField(v string) {
@@ -156,4 +210,3 @@ func (m *measurement) validate() error {
 
 	return nil
 }
-
