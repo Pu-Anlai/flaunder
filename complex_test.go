@@ -7,6 +7,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"os"
+	"sync"
 	"testing"
 )
 
@@ -108,34 +109,60 @@ func TestIconInit(t *testing.T) {
 	}
 }
 
-func TestMeasurementValidate(t *testing.T) {
+func TestMeasurement(t *testing.T) {
+	var rel1 float64 = 90
+	var rel2 float64 = 1440
+	var wg sync.WaitGroup
+
 	tests := []struct {
 		name      string
 		input     measurement
+		absolute  *[2]int
 		wantError bool
 	}{
-		{"52%", measurement{value: "52%", abs: 0}, false},
-		{"5%", measurement{value: "5%", abs: 0}, false},
-		{"100%", measurement{value: "100%", abs: 0}, false},
-		{"2502px", measurement{value: "2502px", abs: 0}, false},
-		{"1px", measurement{value: "1px", abs: 0}, false},
-		{"", measurement{value: "", abs: 0}, false},
-		{"20p", measurement{value: "20p", abs: 0}, true},
-		{"55", measurement{value: "55", abs: 0}, true},
-		{"155%", measurement{value: "155%", abs: 0}, true},
-		{"-15%", measurement{value: "-15%", abs: 0}, true},
-		{"0%", measurement{value: "0%", abs: 0}, true},
-		{"word", measurement{value: "word", abs: 0}, true},
+		{"52%", measurement{value: "52%", abs: 0}, &[2]int{46, 748}, false},
+		{"5%", measurement{value: "5%", abs: 0}, &[2]int{4, 72}, false},
+		{"100%", measurement{value: "100%", abs: 0}, &[2]int{90, 1440}, false},
+		{"2502px", measurement{value: "2502px", abs: 2502}, &[2]int{2502, 2502}, false},
+		{"1px", measurement{value: "1px", abs: 1}, &[2]int{1, 1}, false},
+		{"", measurement{value: "", abs: 0}, &[2]int{90, 1440}, false},
+		{"20p", measurement{value: "20p", abs: 0}, nil, true},
+		{"55", measurement{value: "55", abs: 0}, nil, true},
+		{"155%", measurement{value: "155%", abs: 0}, nil, true},
+		{"-15%", measurement{value: "-15%", abs: 0}, nil, true},
+		{"-15px", measurement{value: "-15%", abs: 0}, nil, true},
+		{"0%", measurement{value: "0%", abs: 0}, nil, true},
+		{"word", measurement{value: "word", abs: 0}, nil, true},
 	}
 
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
 
+			// first test validate method
 			err := tests[i].input.validate()
 			if tests[i].wantError && err == nil {
 				t.Errorf("measurement %v should not parse correctly but did", tests[i].input)
 			} else if !tests[i].wantError && err != nil {
 				t.Errorf("measurement %v should parse but returned error %s", tests[i].input, err)
+			} else if tests[i].wantError {
+				// if wantError is true quit here because the init method is
+				// expected to fail and will not be run on the struct in the
+				// program
+				return
+			}
+
+			// if validation was succesful, test init method next
+			wg.Add(1)
+			tests[i].input.init(rel1, &wg)
+			if int(tests[i].input.abs) != tests[i].absolute[0] {
+				t.Errorf("measurement %v with relative size %f should produce absolute size %d but instead produced %d",
+					tests[i].input, rel1, int(tests[i].absolute[0]), int(tests[i].input.abs))
+			}
+			wg.Add(1)
+			tests[i].input.init(rel2, &wg)
+			if int(tests[i].input.abs) != tests[i].absolute[1] {
+				t.Errorf("measurement %v with relative size %f should produce absolute size %d but instead produced %d",
+					tests[i].input, rel2, int(tests[i].absolute[1]), int(tests[i].input.abs))
 			}
 		})
 	}

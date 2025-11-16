@@ -173,7 +173,8 @@ func (f *font) validate() error {
 
 func (m *measurement) init(rel float64, wg *sync.WaitGroup) {
 	if m.value[len(m.value)-1:] == "%" {
-		m.abs, _ = strconv.ParseFloat(m.value[:len(m.value)-1], 10)
+		parsed, _ := strconv.ParseFloat(m.value[:len(m.value)-1], 10)
+		m.abs = rel * (parsed / 100)
 	} else if m.value[len(m.value)-2:] == "px" {
 		m.abs, _ = strconv.ParseFloat(m.value[:len(m.value)-2], 10)
 	}
