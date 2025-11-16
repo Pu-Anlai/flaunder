@@ -212,7 +212,31 @@ func (a *app) init() error {
 	return nil
 }
 
-// runGui creates a GUI using the settings taken from conf
-func runGui(conf *config) {
+// getApp returns a new instance of app and makes sure there are no nil pointer
+func getApp(conf *config) *app {
+	a := new(app)
+	a.mut = &sync.Mutex{}
+	a.settings = conf.settings
+	a.entries = conf.entries
+	return a
+}
 
+// runGui creates a GUI using the settings taken from conf
+func runGui(conf *config) error {
+	conf, err := getConfig()
+	if err != nil {
+		return err
+	}
+
+	a := getApp(conf)
+	if err := a.init(); err != nil {
+		return err
+	}
+
+	ebiten.SetWindowTitle("flaunder")
+	ebiten.SetFullscreen(true)
+	if err := ebiten.RunGame(a); err != nil {
+		return err
+	}
+	return nil
 }
