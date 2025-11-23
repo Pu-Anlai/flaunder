@@ -16,6 +16,44 @@ func getMockApp() *app {
 	return a
 }
 
+// getMockIcon creates a mock image file and an icon struct, whose path field
+// points to the file. REMEMBER to delete the file at icon.path after testing is
+// completed
+func getMockIcon(dim dimensions, ft string) (*icon, error) {
+	// one err variable so we can use it in the switch statement below
+	var err error
+	tmpFileTempl := fmt.Sprintf("img-file-*.%s", ft)
+	img := image.NewRGBA(image.Rect(0, 0, dim.width, dim.height))
+	// fill with red
+	for x := 0; x < dim.width; x++ {
+		for y := 0; y < dim.height; y++ {
+			img.Set(x, y, color.RGBA{255, 0, 0, 255})
+		}
+	}
+
+	tmpFile, err := os.CreateTemp("", tmpFileTempl)
+	if err != nil {
+		return nil, err
+	}
+	defer tmpFile.Close()
+
+	switch ft {
+	case "png":
+		err = png.Encode(tmpFile, img)
+	case "jpg":
+		err = jpeg.Encode(tmpFile, img, nil)
+	default:
+		panic(fmt.Sprintf("invalid filetype specified: %s", ft))
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &icon{
+		path: tmpFile.Name(),
+	}, nil
+}
+
 func TestValidateDimensions(t *testing.T) {
 	a := getMockApp()
 	tests := []struct {

@@ -1,53 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"image"
-	"image/color"
-	"image/jpeg"
-	"image/png"
 	"os"
 	"sync"
 	"testing"
 )
-
-// getMockIcon creates a mock image file and an icon struct, whose path field
-// points to the file. REMEMBER to delete the file at icon.path after testing is
-// completed
-func getMockIcon(dim dimensions, ft string) (*icon, error) {
-	// one err variable so we can use it in the switch statement below
-	var err error
-	tmpFileTempl := fmt.Sprintf("img-file-*.%s", ft)
-	img := image.NewRGBA(image.Rect(0, 0, dim.width, dim.height))
-	// fill with red
-	for x := 0; x < dim.width; x++ {
-		for y := 0; y < dim.height; y++ {
-			img.Set(x, y, color.RGBA{255, 0, 0, 255})
-		}
-	}
-
-	tmpFile, err := os.CreateTemp("", tmpFileTempl)
-	if err != nil {
-		return nil, err
-	}
-	defer tmpFile.Close()
-
-	switch ft {
-	case "png":
-		err = png.Encode(tmpFile, img)
-	case "jpg":
-		err = jpeg.Encode(tmpFile, img, nil)
-	default:
-		panic(fmt.Sprintf("invalid filetype specified: %s", ft))
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	return &icon{
-		path: tmpFile.Name(),
-	}, nil
-}
 
 func TestIconValidate(t *testing.T) {
 	// test non existing paths throwing an error, otherwise validation should be
@@ -88,6 +45,7 @@ func TestIconInit(t *testing.T) {
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
 			mockIcon, err := getMockIcon(tests[i].dim, tests[i].ft)
+			defer os.Remove(mockIcon.path)
 			if err != nil {
 				t.Fatal(err)
 			}
