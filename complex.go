@@ -25,12 +25,12 @@ type complexOption interface {
 }
 
 type icon struct {
-	path           string
-	image          image.Image
-	dim            dimensions
-	isVector       bool
-	vecCanvas      *canvas.Canvas
-	vecAspectRatio float64
+	path        string
+	image       image.Image
+	dim         dimensions
+	aspectRatio float64
+	isVector    bool
+	vecCanvas   *canvas.Canvas
 }
 
 type font struct {
@@ -84,7 +84,7 @@ func (i *icon) init() error {
 			return &fileDecodeError{path: i.path, fileType: "svg"}
 		}
 		i.vecCanvas = svgCanvas
-		i.vecAspectRatio = svgCanvas.H / svgCanvas.W
+		i.aspectRatio = svgCanvas.H / svgCanvas.W
 	} else {
 		img, ft, err := image.Decode(f)
 		if err != nil {
@@ -93,6 +93,7 @@ func (i *icon) init() error {
 		i.image = img
 		bounds := img.Bounds()
 		i.dim = dimensions{width: bounds.Dx(), height: bounds.Dy()}
+		i.aspectRatio = float64(bounds.Dx()) / float64(bounds.Dy())
 	}
 	return nil
 }
@@ -103,7 +104,7 @@ func (i *icon) ensureRendered(height float64) {
 	if !i.isVector {
 		return
 	}
-	width := height * i.vecAspectRatio
+	width := height * i.aspectRatio
 	canv := canvas.New(width, height)
 	scaleX, scaleY := width/i.vecCanvas.W, height/i.vecCanvas.H
 
