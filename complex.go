@@ -112,12 +112,12 @@ func (i *icon) ensureRendered(height float64) {
 	i.image = rasterizer.Draw(canv, canvas.DPI(dpi), canvas.DefaultColorSpace)
 }
 
-func (f *font) init(a *app) error {
+func (f *font) init(fontSize float64) error {
 	var r io.Reader
-	if a.settings.Font.path != "" {
+	if f.path != "" {
 		// this should be safe as the path has already been validated, even if
 		// it doesn't, we can catch the error in the next step
-		fData, _ := os.ReadFile(a.settings.Font.path)
+		fData, _ := os.ReadFile(f.path)
 		r = bytes.NewReader(fData)
 	} else {
 		r = bytes.NewReader(fonts.MPlus1pRegular_ttf)
@@ -130,17 +130,16 @@ func (f *font) init(a *app) error {
 		return err
 	}
 
-	size := float64(a.settings.FontSize)
-	if size == 0 {
-		size = 18
+	if fontSize == 0 {
+		fontSize = 18
 	}
 
-	a.settings.Font.face = &text.GoTextFace{
+	f.face = &text.GoTextFace{
 		Source: fSource,
-		Size:   size,
+		Size:   fontSize,
 	}
-	metrics := a.settings.Font.face.Metrics()
-	a.settings.Font.height = metrics.HAscent + metrics.HDescent
+	metrics := f.face.Metrics()
+	f.height = metrics.HAscent + metrics.HDescent
 
 	return nil
 }

@@ -205,7 +205,8 @@ func (a *app) init() error {
 	}
 
 	// load font
-	if err := a.settings.Font.init(a); err != nil {
+	if err := a.settings.Font.init(float64(a.settings.FontSize)); err != nil {
+
 		return err
 	}
 
