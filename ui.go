@@ -67,14 +67,24 @@ func getTitleDrawX(eImg *entryImg) float64 {
 // getIconDimensions takes height, compares it with the maximal height available
 // on eImg and uses the smaller value to compute width; it returnes the correct
 // height and width
-func getIconDimensions(height float64, eImg *entryImg) (float64, float64) {
-	maxHeight := float64(eImg.img.Bounds().Size().Y)
+func getIconDimensions(e *entry, eImg *entryImg) (float64, float64) {
 	maxWidth := float64(eImg.img.Bounds().Size().X)
-	aspectRatio := maxWidth / maxHeight
-	if height > maxHeight {
-		height = maxHeight
+	maxHeight := float64(eImg.img.Bounds().Size().Y)
+	var height float64
+
+	if e.Icon.isVector {
+		height = min(maxHeight, e.IconHeight.abs)
+	} else {
+		height = min(maxHeight, e.IconHeight.abs, float64(e.Icon.dim.height))
 	}
-	width := height * aspectRatio
+
+	// calculate width matching aspect ratio
+	width := e.Icon.calculateWithAspectRatio(height, true)
+	// if width is too big, adapt height instead using maxWidth
+	if width > maxWidth {
+		width = maxWidth
+		height = e.Icon.calculateWithAspectRatio(width, false)
+	}
 	return width, height
 }
 
@@ -85,7 +95,7 @@ func (a *app) updateMeasurements() {
 	var wg sync.WaitGroup
 	for i := range a.entries {
 		wg.Add(1)
-		a.entries[i].IconHeight.init(height, &wg)
+		go a.entries[i].IconHeight.init(height, &wg)
 	}
 	// initiate all padding fields (without reflect for performance reasons)
 	wg.Add(5)
@@ -101,7 +111,7 @@ func (a *app) updateMeasurements() {
 func (a *app) drawIconOnEntryImg(e *entry, eImg *entryImg) {
 	icon := ebiten.NewImageFromImage(e.Icon.image)
 	iconOpt := &ebiten.DrawImageOptions{}
-	iconWidth, iconHeight := getIconDimensions(e.IconHeight.abs, eImg)
+	iconWidth, iconHeight := getIconDimensions(e, eImg)
 	iconOpt.GeoM.Scale(iconWidth, iconHeight)
 
 	// - x: width of the canvas minus width of the icon, the resulting difference
@@ -206,7 +216,6 @@ func (a *app) init() error {
 
 	// load font
 	if err := a.settings.Font.init(float64(a.settings.FontSize)); err != nil {
-
 		return err
 	}
 
