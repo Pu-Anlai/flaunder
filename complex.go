@@ -25,12 +25,11 @@ type complexOption interface {
 }
 
 type icon struct {
-	path        string
-	image       image.Image
-	dim         dimensions
-	aspectRatio float64
-	isVector    bool
-	vecCanvas   *canvas.Canvas
+	path      string
+	image     image.Image
+	dim       dimensions
+	isVector  bool
+	vecCanvas *canvas.Canvas
 }
 
 type font struct {
@@ -84,7 +83,6 @@ func (i *icon) init() error {
 			return &fileDecodeError{path: i.path, fileType: "svg"}
 		}
 		i.vecCanvas = svgCanvas
-		i.aspectRatio = svgCanvas.H / svgCanvas.W
 	} else {
 		img, ft, err := image.Decode(f)
 		if err != nil {
@@ -93,7 +91,6 @@ func (i *icon) init() error {
 		i.image = img
 		bounds := img.Bounds()
 		i.dim = dimensions{width: bounds.Dx(), height: bounds.Dy()}
-		i.aspectRatio = float64(bounds.Dx()) / float64(bounds.Dy())
 	}
 	return nil
 }
@@ -104,12 +101,31 @@ func (i *icon) ensureRendered(height float64) {
 	if !i.isVector {
 		return
 	}
-	width := height * i.aspectRatio
+	width := i.calculateWithAspectRatio(height, true)
 	canv := canvas.New(width, height)
 	scaleX, scaleY := width/i.vecCanvas.W, height/i.vecCanvas.H
 
 	i.vecCanvas.RenderViewTo(canv, canvas.Identity.Scale(scaleX, scaleY))
 	i.image = rasterizer.Draw(canv, canvas.DPI(dpi), canvas.DefaultColorSpace)
+}
+
+// calculateWithAspectRatio uses one side (base) to calculate and return the
+// other side maintaining the icon i's aspect ratio. if isHeight is true base is
+// considered to be the height, otherwise it is considered the width
+func (i *icon) calculateWithAspectRatio(base float64, isHeight bool) float64 {
+	if i.isVector {
+		if isHeight {
+			return base * (i.vecCanvas.W / i.vecCanvas.H)
+		} else {
+			return base * (i.vecCanvas.H / i.vecCanvas.W)
+		}
+	} else {
+		if isHeight {
+			return base * (float64(i.dim.width) / float64(i.dim.height))
+		} else {
+			return base * (float64(i.dim.height) / float64(i.dim.width))
+		}
+	}
 }
 
 func (f *font) init(fontSize float64) error {
