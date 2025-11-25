@@ -120,6 +120,7 @@ func TestGetIconDimensions(t *testing.T) {
 			var e entry
 			e.IconHeight.abs = tests[i].inputSetHeight
 			icon, err := getMockIcon(tests[i].inEntryIconDim, "png")
+			defer os.Remove(icon.path)
 			// TODO: add tests for svg icons
 			if err != nil {
 				t.Fatal(err)
