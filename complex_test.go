@@ -1,10 +1,16 @@
 package main
 
 import (
+	"math"
 	"os"
 	"sync"
 	"testing"
 )
+
+// floatEqual compares two floats and returns true if they are within a range that would make them considered equal in general usage
+func floatEqual(a, b float64) bool {
+	return math.Abs(a-b) <= 1e-4
+}
 
 func TestIconValidate(t *testing.T) {
 	// test non existing paths throwing an error, otherwise validation should be
@@ -62,6 +68,43 @@ func TestIconInit(t *testing.T) {
 
 			if mockIcon.dim != tests[i].dim {
 				t.Errorf("icon created with dimensions %d x %d did not initialize to image of same size", tests[i].dim.width, tests[i].dim.height)
+			}
+		})
+	}
+}
+
+func TestIconCalculateWithAspectRatio(t *testing.T) {
+	tests := []struct {
+		name    string
+		iconDim dimensions
+		base    float64
+		// result with isHeight a) false and b) true
+		want [2]float64
+	}{
+		{"1024x768 -> 800", dimensions{1024, 768}, 640, [2]float64{480, 853.3333}},
+		{"200x200 -> 2", dimensions{200, 200}, 2, [2]float64{2, 2}},
+		{"2x400 -> 1", dimensions{2, 400}, 1, [2]float64{200, 0.0050}},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+			mockIcon, err := getMockIcon(tests[i].iconDim, "jpg")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := mockIcon.init(); err != nil {
+				t.Fatal(err)
+			}
+
+			height := mockIcon.calculateWithAspectRatio(tests[i].base, false)
+			width := mockIcon.calculateWithAspectRatio(tests[i].base, true)
+
+			if !floatEqual(height, tests[i].want[0]) {
+				t.Errorf("%+v with base width %f wants height %f but got %f", tests[i].iconDim, tests[i].base, tests[i].want[0], height)
+			}
+
+			if !floatEqual(width, tests[i].want[1]) {
+				t.Errorf("%+v with base height %f wants width %f but got %f", tests[i].iconDim, tests[i].base, tests[i].want[1], width)
 			}
 		})
 	}
