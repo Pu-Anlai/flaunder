@@ -8,6 +8,7 @@ import (
 	_ "image/png"
 	"io"
 	"os"
+	"path"
 	"strconv"
 	"sync"
 
@@ -139,19 +140,23 @@ func (i *icon) calculateWithAspectRatio(base float64, isHeight bool) float64 {
 
 func (f *font) init(fontSize float64) error {
 	var r io.Reader
+	var fData []byte
 	if f.path != "" {
 		// this should be safe as the path has already been validated, even if
-		// it doesn't, we can catch the error in the next step
-		fData, _ := os.ReadFile(f.path)
-		r = bytes.NewReader(fData)
+		// it hasn't, we can catch the error in the next step
+		fData, _ = os.ReadFile(f.path)
 	} else {
-		r = bytes.NewReader(fonts.MPlus1pRegular_ttf)
+		// this should be safe because we're packaging fbFont
+		font, _ := assetFs.Open(fbFont)
+		font.Read(fData)
 	}
+	r = bytes.NewReader(fData)
 
 	fSource, err := text.NewGoTextFaceSource(r)
 	if err != nil {
 		// unlikely to trigger as the filetype package should have confirmed
 		// this to be a valid font
+		// if the fallback font is used, we know this to be a valid font
 		return err
 	}
 
