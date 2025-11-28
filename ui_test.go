@@ -133,13 +133,26 @@ func TestGetIconDimensions(t *testing.T) {
 		outputDim      [2]float64
 	}{
 		{"png: iconHeight > setHeight > screenHeight", dimensions{800, 600}, 641, "png", [2]float64{640, 480}},
+		{"jpg: iconHeight > setHeight > screenHeight", dimensions{800, 600}, 641, "jpg", [2]float64{640, 480}},
 		{"svg: iconHeight > setHeight > screenHeight", dimensions{800, 600}, 641, "svg", [2]float64{640, 480}},
-		{"png: iconHeight > setHeight < screenHeight", dimensions{320, 240}, 120, "png", [2]float64{160, 120}},
-		{"png: iconHeight < setHeight > screenHeight", dimensions{320, 240}, 800, "png", [2]float64{320, 240}},
-		{"png: iconHeight < setHeight < screenHeight", dimensions{320, 240}, 800, "png", [2]float64{320, 240}},
+		{"png: screenHeight > iconHeight > setHeight", dimensions{320, 240}, 120, "png", [2]float64{160, 120}},
+		{"jpg: screenHeight > iconHeight > setHeight", dimensions{320, 240}, 120, "jpg", [2]float64{160, 120}},
+		{"svg: screenHeight > iconHeight > setHeight", dimensions{320, 240}, 120, "svg", [2]float64{160, 120}},
+		{"png: setHeight > screenHeight > iconHeight", dimensions{320, 240}, 800, "png", [2]float64{320, 240}},
+		{"jpg: setHeight > screenHeight > iconHeight", dimensions{320, 240}, 800, "jpg", [2]float64{320, 240}},
+		{"svg: setHeight > screenHeight > iconHeight", dimensions{320, 240}, 800, "svg", [2]float64{640, 480}},
+		{"png: screenHeight > setHeight > iconHeight", dimensions{320, 240}, 400, "png", [2]float64{320, 240}},
+		{"jpg: screenHeight > setHeight > iconHeight", dimensions{320, 240}, 400, "jpg", [2]float64{320, 240}},
+		{"svg: screenHeight > setHeight > iconHeight", dimensions{320, 240}, 400, "svg", [2]float64{533.3333, 400}},
 		{"png: iconHeight resized to screenHeight", dimensions{400, 1000}, 800, "png", [2]float64{192, 480}},
+		{"jpg: iconHeight resized to screenHeight", dimensions{400, 1000}, 800, "jpg", [2]float64{192, 480}},
+		{"svg: iconHeight resized to screenHeight", dimensions{400, 1000}, 800, "svg", [2]float64{192, 480}},
 		{"png: iconWidth resized to screenWidth", dimensions{1000, 400}, 800, "png", [2]float64{640, 256}},
+		{"jpg: iconWidth resized to screenWidth", dimensions{1000, 400}, 800, "jpg", [2]float64{640, 256}},
+		{"svg: iconWidth resized to screenWidth", dimensions{1000, 400}, 800, "svg", [2]float64{640, 256}},
 		{"png: iconHeight resized to setHeight", dimensions{400, 200}, 100, "png", [2]float64{200, 100}},
+		{"jpg: iconHeight resized to setHeight", dimensions{400, 200}, 100, "jpg", [2]float64{200, 100}},
+		{"svg: iconHeight resized to setHeight", dimensions{400, 200}, 100, "svg", [2]float64{200, 100}},
 	}
 
 	for i := range tests {
@@ -148,7 +161,6 @@ func TestGetIconDimensions(t *testing.T) {
 			e.IconHeight.abs = tests[i].inputSetHeight
 			icon, err := getMockIcon(tests[i].inEntryIconDim, tests[i].ft)
 			defer os.Remove(icon.path)
-			// TODO: add tests for svg icons
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -168,7 +180,7 @@ func TestGetIconDimensions(t *testing.T) {
 			eImg.img = ebiten.NewImage(eImg.dim.width, eImg.dim.height)
 
 			x, y := getIconDimensions(&e, eImg)
-			if x != tests[i].outputDim[0] || y != tests[i].outputDim[1] {
+			if !floatEqual(x, tests[i].outputDim[0]) || !floatEqual(y, tests[i].outputDim[1]) {
 				t.Errorf("%s icon: wanted dimensions %f, %f but got %f, %f", tests[i].ft, tests[i].outputDim[0], tests[i].outputDim[1], x, y)
 			}
 		})
