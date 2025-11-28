@@ -43,9 +43,14 @@ func getMockApp() *app {
 	s.BottomPadding = measurement{abs: 20}
 	s.ImageTitlePadding = measurement{abs: 5}
 	a.settings = s
+
+	if err := f.validate(); err != nil {
+		panic(err)
+	}
 	if err := f.init(0); err != nil {
 		panic(err)
 	}
+
 	f.height = 15
 	a.settings.Font = *f
 

@@ -78,6 +78,7 @@ func (i *icon) init() error {
 	if !i.valid {
 		panic(fmt.Sprintf("attempted to run init on unvalidated %+v", *i))
 	}
+
 	f, err := os.Open(i.path)
 	if err != nil {
 		return &fileAccessError{path: i.path, fileType: "image"}
@@ -93,7 +94,6 @@ func (i *icon) init() error {
 	} else {
 		img, ft, err := image.Decode(f)
 		if err != nil {
-			fmt.Println(i.path)
 			return &fileDecodeError{path: i.path, fileType: ft}
 		}
 		i.image = img
@@ -137,6 +137,10 @@ func (i *icon) calculateWithAspectRatio(base float64, isHeight bool) float64 {
 }
 
 func (f *font) init(fontSize float64) error {
+	if !f.valid {
+		panic(fmt.Sprintf("attempted to run init on unvalidated %+v", *f))
+	}
+
 	var r io.Reader
 	var fData []byte
 	if f.path != "" {
@@ -144,9 +148,7 @@ func (f *font) init(fontSize float64) error {
 		// it hasn't, we can catch the error in the next step
 		fData, _ = os.ReadFile(f.path)
 	} else {
-		// this should be safe because we're packaging fbFont
-		font, _ := assetFs.Open(fbFont)
-		font.Read(fData)
+		fData = fbFont
 	}
 	r = bytes.NewReader(fData)
 
@@ -201,6 +203,10 @@ func (f *font) validate() error {
 }
 
 func (m *measurement) init(rel float64, wg *sync.WaitGroup) {
+	if !m.valid {
+		panic(fmt.Sprintf("attempted to run init on unvalidated %+v", *m))
+	}
+
 	if m.value[len(m.value)-1:] == "%" {
 		parsed, _ := strconv.ParseFloat(m.value[:len(m.value)-1], 10)
 		m.abs = rel * (parsed / 100)
