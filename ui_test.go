@@ -32,13 +32,18 @@ func getMockApp() *app {
 	return a
 }
 
-// getMockIcon creates a mock image file and an icon struct, whose path field
-// points to the file. REMEMBER to delete the file at icon.path after testing is
-// completed
-func getMockIcon(dim dimensions, ft string) (*icon, error) {
-	// one err variable so we can use it in the switch statement below
-	var err error
-	tmpFileTempl := fmt.Sprintf("img-file-*.%s", ft)
+// getMockSvg returns the byte contents of an svg vector file of a red
+// rectangle of size dim
+func getMockSvg(dim dimensions) []byte {
+	return fmt.Appendf([]byte{},
+		`<?xml version="1.0" encoding="UTF-8"?>
+<svg width="%d" height="%d" xmlns="http://www.w3.org/2000/svg">
+  <rect width="%d" height="%d" fill="red"/>
+</svg>`, dim.width, dim.height, dim.width, dim.height)
+}
+
+// getMockImage creates an image of a red rectangle of size dim and returns it
+func getMockImage(dim dimensions) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, dim.width, dim.height))
 	// fill with red
 	for x := 0; x < dim.width; x++ {
@@ -46,6 +51,16 @@ func getMockIcon(dim dimensions, ft string) (*icon, error) {
 			img.Set(x, y, color.RGBA{255, 0, 0, 255})
 		}
 	}
+	return img
+}
+
+// getMockIcon creates a mock image file and an icon struct, whose path field
+// points to the file. REMEMBER to delete the file at icon.path after testing is
+// completed
+func getMockIcon(dim dimensions, ft string) (*icon, error) {
+	// one err variable so we can use it in the switch statement below
+	var err error
+	tmpFileTempl := fmt.Sprintf("img-file-*.%s", ft)
 
 	tmpFile, err := os.CreateTemp("", tmpFileTempl)
 	if err != nil {
@@ -53,11 +68,21 @@ func getMockIcon(dim dimensions, ft string) (*icon, error) {
 	}
 	defer tmpFile.Close()
 
+	var img image.Image
+	var svg []byte
+	if ft == "svg" {
+		svg = getMockSvg(dim)
+	} else {
+		img = getMockImage(dim)
+	}
+
 	switch ft {
 	case "png":
 		err = png.Encode(tmpFile, img)
 	case "jpg":
 		err = jpeg.Encode(tmpFile, img, nil)
+	case "svg":
+		_, err = tmpFile.Write(svg)
 	default:
 		panic(fmt.Sprintf("invalid filetype specified: %s", ft))
 	}
@@ -104,22 +129,24 @@ func TestGetIconDimensions(t *testing.T) {
 		inEntryIconDim dimensions
 		// dimension set by the user
 		inputSetHeight float64
+		ft             string
 		outputDim      [2]float64
 	}{
-		{"iconHeight > setHeight > screenHeight", dimensions{800, 600}, 641, [2]float64{640, 480}},
-		{"iconHeight > setHeight < screenHeight", dimensions{320, 240}, 120, [2]float64{160, 120}},
-		{"iconHeight < setHeight > screenHeight", dimensions{320, 240}, 800, [2]float64{320, 240}},
-		{"iconHeight < setHeight < screenHeight", dimensions{320, 240}, 800, [2]float64{320, 240}},
-		{"iconHeight resized to screenHeight", dimensions{400, 1000}, 800, [2]float64{192, 480}},
-		{"iconWidth resized to screenWidth", dimensions{1000, 400}, 800, [2]float64{640, 256}},
-		{"iconHeight resized to setHeight", dimensions{400, 200}, 100, [2]float64{200, 100}},
+		{"png: iconHeight > setHeight > screenHeight", dimensions{800, 600}, 641, "png", [2]float64{640, 480}},
+		{"svg: iconHeight > setHeight > screenHeight", dimensions{800, 600}, 641, "svg", [2]float64{640, 480}},
+		{"png: iconHeight > setHeight < screenHeight", dimensions{320, 240}, 120, "png", [2]float64{160, 120}},
+		{"png: iconHeight < setHeight > screenHeight", dimensions{320, 240}, 800, "png", [2]float64{320, 240}},
+		{"png: iconHeight < setHeight < screenHeight", dimensions{320, 240}, 800, "png", [2]float64{320, 240}},
+		{"png: iconHeight resized to screenHeight", dimensions{400, 1000}, 800, "png", [2]float64{192, 480}},
+		{"png: iconWidth resized to screenWidth", dimensions{1000, 400}, 800, "png", [2]float64{640, 256}},
+		{"png: iconHeight resized to setHeight", dimensions{400, 200}, 100, "png", [2]float64{200, 100}},
 	}
 
 	for i := range tests {
 		t.Run(tests[i].name, func(t *testing.T) {
 			var e entry
 			e.IconHeight.abs = tests[i].inputSetHeight
-			icon, err := getMockIcon(tests[i].inEntryIconDim, "png")
+			icon, err := getMockIcon(tests[i].inEntryIconDim, tests[i].ft)
 			defer os.Remove(icon.path)
 			// TODO: add tests for svg icons
 			if err != nil {
@@ -139,7 +166,7 @@ func TestGetIconDimensions(t *testing.T) {
 
 			x, y := getIconDimensions(&e, eImg)
 			if x != tests[i].outputDim[0] || y != tests[i].outputDim[1] {
-				t.Errorf("wanted dimensions %f, %f but got %f, %f", tests[i].outputDim[0], tests[i].outputDim[1], x, y)
+				t.Errorf("%s icon: wanted dimensions %f, %f but got %f, %f", tests[i].ft, tests[i].outputDim[0], tests[i].outputDim[1], x, y)
 			}
 		})
 	}
