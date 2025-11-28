@@ -1,11 +1,6 @@
 package main
 
-import (
-	"embed"
-	"path"
-)
+import _ "embed"
 
-// go: embed assets
-var assetFs embed.FS
-
-var fbFont = path.Join("assets", "Roboto-Regular.ttf")
+//go:embed assets/Roboto-Regular.ttf
+var fbFont []byte
