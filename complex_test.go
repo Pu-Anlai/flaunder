@@ -42,10 +42,10 @@ func TestIconInit(t *testing.T) {
 		dim  dimensions
 		ft   string
 	}{
-		{"test name", dimensions{200, 400}, "jpg"},
-		{"test name", dimensions{1200, 800}, "jpg"},
-		{"test name", dimensions{200, 400}, "png"},
-		{"test name", dimensions{1200, 800}, "png"},
+		{"jpg icon 200x400", dimensions{200, 400}, "jpg"},
+		{"jpg icon 1200x800", dimensions{1200, 800}, "jpg"},
+		{"png icon 200x400", dimensions{200, 400}, "png"},
+		{"png icon 1200x800", dimensions{1200, 800}, "png"},
 	}
 
 	for i := range tests {
@@ -90,6 +90,9 @@ func TestIconCalculateWithAspectRatio(t *testing.T) {
 		t.Run(tests[i].name, func(t *testing.T) {
 			mockIcon, err := getMockIcon(tests[i].iconDim, "jpg")
 			if err != nil {
+				t.Fatal(err)
+			}
+			if err := mockIcon.validate(); err != nil {
 				t.Fatal(err)
 			}
 			if err := mockIcon.init(); err != nil {

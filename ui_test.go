@@ -152,6 +152,9 @@ func TestGetIconDimensions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			if err := icon.validate(); err != nil {
+				t.Fatal(err)
+			}
 			if err := icon.init(); err != nil {
 				t.Fatal(err)
 			}

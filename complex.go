@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	_ "image/jpeg"
 	_ "image/png"
@@ -25,6 +26,7 @@ type complexOption interface {
 }
 
 type icon struct {
+	valid     bool
 	path      string
 	image     image.Image
 	dim       dimensions
@@ -33,12 +35,14 @@ type icon struct {
 }
 
 type font struct {
+	valid  bool
 	path   string
 	height float64
 	face   *text.GoTextFace
 }
 
 type measurement struct {
+	valid bool
 	value string
 	abs   float64
 }
@@ -50,6 +54,7 @@ func (i *icon) setBaseField(v string) {
 // validate returns nil if i points to a supported image file, otherwise it
 // returns an appropriate error
 func (i *icon) validate() error {
+	i.valid = true
 	// not providing an image is allowed:
 	if i.path == "" {
 		return nil
@@ -60,10 +65,10 @@ func (i *icon) validate() error {
 		return &fileAccessError{path: i.path}
 	}
 
-	if filetype.IsImage(buf) {
-		return nil
-	} else if svg.IsSVG(buf) {
+	if svg.IsSVG(buf) {
 		i.isVector = true
+		return nil
+	} else if filetype.IsImage(buf) {
 		return nil
 	} else {
 		return &fileAccessError{path: i.path, fileType: "image"}
@@ -71,6 +76,9 @@ func (i *icon) validate() error {
 }
 
 func (i *icon) init() error {
+	if !i.valid {
+		panic(fmt.Sprintf("attempted to run init on unvalidated %+v", *i))
+	}
 	f, err := os.Open(i.path)
 	if err != nil {
 		return &fileAccessError{path: i.path, fileType: "image"}
@@ -86,6 +94,7 @@ func (i *icon) init() error {
 	} else {
 		img, ft, err := image.Decode(f)
 		if err != nil {
+			fmt.Println(i.path)
 			return &fileDecodeError{path: i.path, fileType: ft}
 		}
 		i.image = img
@@ -166,6 +175,7 @@ func (f *font) setBaseField(v string) {
 
 // validate checks if path points to a valid font file
 func (f *font) validate() error {
+	f.valid = true
 	// not providing a font is allowed
 	if f.path == "" {
 		return nil
@@ -203,6 +213,7 @@ func (m *measurement) setBaseField(v string) {
 
 // validate makes sure measurement follows one of the allowed patterns
 func (m *measurement) validate() error {
+	m.valid = true
 	if len(m.value) == 1 {
 		return &iniParseError{value: m.value}
 	}
