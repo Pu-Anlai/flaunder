@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"slices"
 	"testing"
 
 	"gopkg.in/ini.v1"
@@ -66,21 +65,6 @@ background =
 Icon =
 Command =
 IconHeight= invalid`)
-
-// compareSlices checks whether two slices contain the same elements
-// disregarding order
-func compareSlices[T comparable](s1, s2 []T) bool {
-	if len(s1) != len(s2) {
-		return false
-	}
-
-	for i := range s1 {
-		if !slices.Contains(s2, s1[i]) {
-			return false
-		}
-	}
-	return true
-}
 
 // TestParseConfigFile tests parseConfigFile with a mock config []byte (in place
 // of a real file)

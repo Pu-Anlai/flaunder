@@ -1,16 +1,10 @@
 package main
 
 import (
-	"math"
 	"os"
 	"sync"
 	"testing"
 )
-
-// floatEqual compares two floats and returns true if they are within a range that would make them considered equal in general usage
-func floatEqual(a, b float64) bool {
-	return math.Abs(a-b) <= 1e-4
-}
 
 func TestIconValidate(t *testing.T) {
 	// test non existing paths throwing an error, otherwise validation should be
