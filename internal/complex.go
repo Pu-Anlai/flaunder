@@ -8,13 +8,11 @@ import (
 	_ "image/png"
 	"io"
 	"os"
-	"path"
 	"strconv"
 	"sync"
 
 	"github.com/h2non/filetype"
 	svg "github.com/h2non/go-is-svg"
-	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/tdewolff/canvas"
 	"github.com/tdewolff/canvas/renderers/rasterizer"
