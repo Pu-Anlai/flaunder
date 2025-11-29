@@ -127,7 +127,7 @@ func (a *app) updateMeasurements() {
 // getIconOriginPoint calculates the origin point for drawing the icon onto eImg
 // so that it is aligned centrally on the x axis and center between top padding
 // and icon-title padding on the y axis
-func (a *app) getIconOriginPoint(eImg *entryImg, iconDim dimensions[float64]) (x, y float64) {
+func getIconOriginPoint(eImg *entryImg, iconDim dimensions[float64]) (x, y float64) {
 	// - x: width of the canvas (the ebiten image) minus width of the icon, the resulting difference
 	//      divided by two
 	//      (canvasWidth - iconWidth) / 2
@@ -148,7 +148,7 @@ func (a *app) drawIconOnEntryImg(e *entry, eImg *entryImg) {
 	iconWidth, iconHeight := getIconDimensions(e, eImg)
 	iconOpt.GeoM.Scale(iconWidth, iconHeight)
 
-	iconX, iconY := a.getIconOriginPoint(eImg, dimensions[float64]{iconWidth, iconHeight})
+	iconX, iconY := getIconOriginPoint(eImg, dimensions[float64]{iconWidth, iconHeight})
 	iconOpt.GeoM.Translate(iconX, iconY)
 	icon.DrawImage(eImg.img, iconOpt)
 }
