@@ -27,12 +27,12 @@ type app struct {
 // app.settings. The ebiten image contains a properly aligned icon and title as
 // specified in the entry that entryImg was created from.
 type entryImg struct {
-	img        *ebiten.Image
-	name       string
-	dim        dimensions[float64]
-	titleDim   dimensions[float64]
-	iconTitPad int
-	err        *error
+	img          *ebiten.Image
+	name         string
+	dim          dimensions[float64]
+	titleDim     dimensions[float64]
+	iconTitlePad int
+	err          *error
 }
 
 func (a *app) Layout(winW, winH int) (int, int) {
@@ -56,17 +56,27 @@ func (a *app) Draw(screen *ebiten.Image) {
 	return
 }
 
-// getTitleDrawX returns the correct origin point on the x axis for drawing the
-// title
-func getTitleDrawX(eImg *entryImg) float64 {
+// getTitleOriginPoint calculates the origin point for drawing the title onto
+// eImg so that it is aligned centrally on the x axis and on top of the bottom
+// padding on the y axis
+func getTitleOriginPoint(eImg *entryImg) (x, y float64) {
+	// - x: width of the canvas (eImg.img, the ebiten image) minus width of the
+	// 	 	title, the resulting difference divided by two
+	//      (canvasWidth - titleWidth) / 2
+	// - y: height of the canvas minus the title height
+	// 	 	(canvasHeight - titleHeight)
+	// the title may overlap lengthwise, in that case:
+	// -x: the x origin point of the canvas minus the difference of the width of
+	//     the title and the width of the canvas divided by two
+	//     canvasWidth - ((titleWidth - canvasWidth) / 2)
 	canvasWidth := eImg.dim.width
-	var x float64
 	if eImg.titleDim.width > canvasWidth {
 		x = 0 - ((eImg.titleDim.width - canvasWidth) / 2)
 	} else {
 		x = (canvasWidth - eImg.titleDim.width) / 2
 	}
-	return x
+	y = eImg.dim.height - eImg.titleDim.height
+	return x, y
 }
 
 // getIconDimensions takes height, compares it with the maximal height available
@@ -76,7 +86,7 @@ func getIconDimensions(e *entry, eImg *entryImg) (float64, float64) {
 	maxWidth := float64(eImg.img.Bounds().Size().X)
 	// we need to make sure that sufficient space is still available for the
 	// title and the image title padding after drawing the icon
-	maxHeight := float64(eImg.img.Bounds().Size().Y) - float64(eImg.iconTitPad) - eImg.titleDim.height
+	maxHeight := float64(eImg.img.Bounds().Size().Y) - float64(eImg.iconTitlePad) - eImg.titleDim.height
 	var height float64
 
 	if e.Icon.isVector {
@@ -114,6 +124,22 @@ func (a *app) updateMeasurements() {
 	wg.Wait()
 }
 
+// getIconOriginPoint calculates the origin point for drawing the icon onto eImg
+// so that it is aligned centrally on the x axis and center between top padding
+// and icon-title padding on the y axis
+func (a *app) getIconOriginPoint(eImg *entryImg, iconDim dimensions[float64]) (x, y float64) {
+	// - x: width of the canvas (the ebiten image) minus width of the icon, the resulting difference
+	//      divided by two
+	//      (canvasWidth - iconWidth) / 2
+	// - y: height of the canvas (the ebiten image) minus height of the icon
+	//      minus iconTitlePadding minus the height of the title, the difference
+	//      divided by two - if the icon has its maximum height, y should be 0
+	//      (canvasWidth - iconHeight - iconTitlePadding - titleHeight) / 2
+	x = (eImg.dim.width - iconDim.width) / 2
+	y = (eImg.dim.height - iconDim.height - float64(eImg.iconTitlePad) - eImg.titleDim.height) / 2
+	return x, y
+}
+
 // drawIconOnEntryImg calculates the dimensions and position for the icon in
 // e and draws it onto entryImg
 func (a *app) drawIconOnEntryImg(e *entry, eImg *entryImg) {
@@ -122,35 +148,15 @@ func (a *app) drawIconOnEntryImg(e *entry, eImg *entryImg) {
 	iconWidth, iconHeight := getIconDimensions(e, eImg)
 	iconOpt.GeoM.Scale(iconWidth, iconHeight)
 
-	// - x: width of the canvas minus width of the icon, the resulting difference
-	//      divided by two
-	//      (canvasWidth - iconWidth) / 2
-	// - y: available height for the image - image height, the resulting
-	//      difference divided by two
-	//      (canvasHeight - imageTitlePadding - titleHeight - imageHeight) / 2
-	iconX := (float64(eImg.dim.width) - iconWidth) / 2
-	a.mut.Lock()
-	iconY := float64(eImg.dim.height) - a.settings.ImageTitlePadding.abs
-	a.mut.Unlock()
+	iconX, iconY := a.getIconOriginPoint(eImg, dimensions[float64]{iconWidth, iconHeight})
 	iconOpt.GeoM.Translate(iconX, iconY)
 	icon.DrawImage(eImg.img, iconOpt)
 }
 
 // drawTitleOnEntryImg calculates the dimensions and position for the title in e
 // and draws it onto entryImg
-func (a *app) drawTitleOnEntryImg(e *entry, eImg *entryImg) {
-	// - x: width of the canvas minus width of the title, the resulting
-	//      difference divided by two
-	//      (canvasWidth - titleWidth) / 2
-	// - y: height of the canvas minus the font height
-	// the title may overlap lengthwise, in that case:
-	// -x: the x origin point of the canvas minus the difference of the width of
-	//     the title and the width of the canvas divided by two
-	//     canvasWidth - ((titleWidth - canvasWidth) / 2)
-	titleX := getTitleDrawX(eImg)
-	a.mut.Lock() // accessing app
-	titleY := eImg.dim.height - a.settings.Font.height
-	a.mut.Unlock()
+func (a *app) drawTitleOnEntryImg(eImg *entryImg) {
+	titleX, titleY := getTitleOriginPoint(eImg)
 	titleOpt := &text.DrawOptions{}
 	titleOpt.GeoM.Translate(titleX, titleY)
 	a.mut.Lock() // accessing app
@@ -164,7 +170,7 @@ func (a *app) getEntryEbitenImg(e *entry, eImg *entryImg, wg *sync.WaitGroup) {
 	defer wg.Done()
 	eImg.img = ebiten.NewImage(int(eImg.dim.width), int(eImg.dim.height))
 	a.drawIconOnEntryImg(e, eImg)
-	a.drawTitleOnEntryImg(e, eImg)
+	a.drawTitleOnEntryImg(eImg)
 	a.mut.Lock()
 	a.images = append(a.images, eImg)
 	a.mut.Unlock()
@@ -173,14 +179,14 @@ func (a *app) getEntryEbitenImg(e *entry, eImg *entryImg, wg *sync.WaitGroup) {
 // newEntryImg initializes a new entryImg instance reading relevant values from
 // a and then returns a pointer to it
 func (a *app) newEntryImg(title string) *entryImg {
-	img := new(entryImg)
-	img.name = title
-	img.dim.height = a.entryImgDim.height
-	img.dim.width = a.entryImgDim.width
-	img.iconTitPad = int(a.settings.IconTitlePadding.abs)
-	img.titleDim.width, _ = text.Measure(title, a.settings.Font.face, 0)
-	img.titleDim.height = a.settings.Font.height
-	return img
+	eImg := new(entryImg)
+	eImg.name = title
+	eImg.dim.height = a.entryImgDim.height
+	eImg.dim.width = a.entryImgDim.width
+	eImg.iconTitlePad = int(a.settings.IconTitlePadding.abs)
+	eImg.titleDim.width, _ = text.Measure(title, a.settings.Font.face, 0)
+	eImg.titleDim.height = a.settings.Font.height
+	return eImg
 }
 
 // generateEntryImgs creates drawable images from all entries in the config; the
