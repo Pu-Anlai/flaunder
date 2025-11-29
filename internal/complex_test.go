@@ -33,13 +33,13 @@ func TestIconValidate(t *testing.T) {
 func TestIconInit(t *testing.T) {
 	tests := []struct {
 		name string
-		dim  dimensions
+		dim  dimensions[int]
 		ft   string
 	}{
-		{"jpg icon 200x400", dimensions{200, 400}, "jpg"},
-		{"jpg icon 1200x800", dimensions{1200, 800}, "jpg"},
-		{"png icon 200x400", dimensions{200, 400}, "png"},
-		{"png icon 1200x800", dimensions{1200, 800}, "png"},
+		{"jpg icon 200x400", dimensions[int]{200, 400}, "jpg"},
+		{"jpg icon 1200x800", dimensions[int]{1200, 800}, "jpg"},
+		{"png icon 200x400", dimensions[int]{200, 400}, "png"},
+		{"png icon 1200x800", dimensions[int]{1200, 800}, "png"},
 	}
 
 	for i := range tests {
@@ -70,14 +70,14 @@ func TestIconInit(t *testing.T) {
 func TestIconCalculateWithAspectRatio(t *testing.T) {
 	tests := []struct {
 		name    string
-		iconDim dimensions
+		iconDim dimensions[int]
 		base    float64
 		// result with isHeight a) false and b) true
 		want [2]float64
 	}{
-		{"1024x768 -> 800", dimensions{1024, 768}, 640, [2]float64{480, 853.3333}},
-		{"200x200 -> 2", dimensions{200, 200}, 2, [2]float64{2, 2}},
-		{"2x400 -> 1", dimensions{2, 400}, 1, [2]float64{200, 0.0050}},
+		{"1024x768 -> 800", dimensions[int]{1024, 768}, 640, [2]float64{480, 853.3333}},
+		{"200x200 -> 2", dimensions[int]{200, 200}, 2, [2]float64{2, 2}},
+		{"2x400 -> 1", dimensions[int]{2, 400}, 1, [2]float64{200, 0.0050}},
 	}
 
 	for i := range tests {

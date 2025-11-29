@@ -38,7 +38,7 @@ func TestGetIconDimensions(t *testing.T) {
 	tests := []struct {
 		name string
 		// original dimensions of the icon in entry
-		inEntryIconDim dimensions
+		inEntryIconDim dimensions[int]
 		// dimension set by the user
 		inputSetHeight float64
 		ft             string
@@ -89,7 +89,7 @@ func TestGetIconDimensions(t *testing.T) {
 			eImg := a.newEntryImg(tests[i].name)
 			// create a new ebiten image with app dimensions and store it in
 			// eImg.img
-			eImg.img = ebiten.NewImage(eImg.dim.width, eImg.dim.height)
+			eImg.img = ebiten.NewImage(int(eImg.dim.width), int(eImg.dim.height))
 
 			x, y := getIconDimensions(&e, eImg)
 			if !floatEqual(x, tests[i].outputDim[0]) || !floatEqual(y, tests[i].outputDim[1]) {

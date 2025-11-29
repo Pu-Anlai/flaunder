@@ -28,7 +28,7 @@ type icon struct {
 	valid     bool
 	path      string
 	image     image.Image
-	dim       dimensions
+	dim       dimensions[int]
 	isVector  bool
 	vecCanvas *canvas.Canvas
 }
@@ -98,7 +98,7 @@ func (i *icon) init() error {
 		}
 		i.image = img
 		bounds := img.Bounds()
-		i.dim = dimensions{width: bounds.Dx(), height: bounds.Dy()}
+		i.dim = dimensions[int]{width: bounds.Dx(), height: bounds.Dy()}
 	}
 	return nil
 }

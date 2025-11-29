@@ -8,8 +8,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
 
-type dimensions struct {
-	width, height int
+type dimensions[T int | float64] struct {
+	width, height T
 }
 
 type app struct {
@@ -17,16 +17,16 @@ type app struct {
 	settings    *settings
 	entries     []entry
 	images      []*entryImg
-	screenDim   dimensions
-	entryImgDim dimensions
+	screenDim   dimensions[int]
+	entryImgDim dimensions[float64]
 }
 
 type entryImg struct {
 	img        *ebiten.Image
 	name       string
-	dim        dimensions
-	titleWidth float64
-	imgTitPad  int
+	dim        dimensions[float64]
+	titleDim   dimensions[float64]
+	iconTitPad int
 	err        *error
 }
 
@@ -35,8 +35,8 @@ func (a *app) Layout(winW, winH int) (int, int) {
 		// save screen dimensions in app
 		a.screenDim.width, a.screenDim.height = winW, winH
 		// save entryImg dimensions in app
-		a.entryImgDim.height = winH - int(a.settings.TopPadding.abs) - int(a.settings.BottomPadding.abs)
-		a.entryImgDim.width = winW
+		a.entryImgDim.height = float64(winH) - a.settings.TopPadding.abs - a.settings.BottomPadding.abs
+		a.entryImgDim.width = float64(winW) - a.settings.LeftPadding.abs - a.settings.RightPadding.abs
 		// TODO: handle error possibly thrown by this:
 		a.generateEntryImgs()
 	}
@@ -54,12 +54,12 @@ func (a *app) Draw(screen *ebiten.Image) {
 // getTitleDrawX returns the correct origin point on the x axis for drawing the
 // title
 func getTitleDrawX(eImg *entryImg) float64 {
-	canvasWidth := float64(eImg.dim.width)
+	canvasWidth := eImg.dim.width
 	var x float64
-	if eImg.titleWidth > canvasWidth {
-		x = 0 - ((eImg.titleWidth - canvasWidth) / 2)
+	if eImg.titleDim.width > canvasWidth {
+		x = 0 - ((eImg.titleDim.width - canvasWidth) / 2)
 	} else {
-		x = (canvasWidth - eImg.titleWidth) / 2
+		x = (canvasWidth - eImg.titleDim.width) / 2
 	}
 	return x
 }
@@ -141,7 +141,7 @@ func (a *app) drawTitleOnEntryImg(e *entry, eImg *entryImg) {
 	//     canvasWidth - ((titleWidth - canvasWidth) / 2)
 	titleX := getTitleDrawX(eImg)
 	a.mut.Lock() // accessing app
-	titleY := float64(eImg.dim.height) - a.settings.Font.height
+	titleY := eImg.dim.height - a.settings.Font.height
 	a.mut.Unlock()
 	titleOpt := &text.DrawOptions{}
 	titleOpt.GeoM.Translate(titleX, titleY)
@@ -154,7 +154,7 @@ func (a *app) drawTitleOnEntryImg(e *entry, eImg *entryImg) {
 // and fontHeight
 func (a *app) getEntryImg(e *entry, eImg *entryImg, wg *sync.WaitGroup) {
 	defer wg.Done()
-	eImg.img = ebiten.NewImage(eImg.dim.width, eImg.dim.height)
+	eImg.img = ebiten.NewImage(int(eImg.dim.width), int(eImg.dim.height))
 	a.drawIconOnEntryImg(e, eImg)
 	a.drawTitleOnEntryImg(e, eImg)
 	a.mut.Lock()

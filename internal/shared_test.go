@@ -59,7 +59,7 @@ func getMockApp() *app {
 
 // getMockSvg returns the byte contents of an svg vector file of a red
 // rectangle of size dim
-func getMockSvg(dim dimensions) []byte {
+func getMockSvg(dim dimensions[int]) []byte {
 	return fmt.Appendf([]byte{},
 		`<?xml version="1.0" encoding="UTF-8"?>
 <svg width="%d" height="%d" xmlns="http://www.w3.org/2000/svg">
@@ -68,7 +68,7 @@ func getMockSvg(dim dimensions) []byte {
 }
 
 // getMockImage creates an image of a red rectangle of size dim and returns it
-func getMockImage(dim dimensions) image.Image {
+func getMockImage(dim dimensions[int]) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, dim.width, dim.height))
 	// fill with red
 	for x := 0; x < dim.width; x++ {
@@ -82,7 +82,7 @@ func getMockImage(dim dimensions) image.Image {
 // getMockIcon creates a mock image file and an icon struct, whose path field
 // points to the file. REMEMBER to delete the file at icon.path after testing is
 // completed
-func getMockIcon(dim dimensions, ft string) (*icon, error) {
+func getMockIcon(dim dimensions[int], ft string) (*icon, error) {
 	// one err variable so we can use it in the switch statement below
 	var err error
 	tmpFileTempl := fmt.Sprintf("img-file-*.%s", ft)
