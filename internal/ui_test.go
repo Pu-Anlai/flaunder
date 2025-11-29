@@ -99,3 +99,33 @@ func TestGetIconDimensions(t *testing.T) {
 		})
 	}
 }
+
+func TestGetIconOriginPoint(t *testing.T) {
+	a := getMockApp()
+	tests := []struct {
+		name         string
+		ebitenImgDim dimensions[float64]
+		iconDim      dimensions[float64]
+		// for simplicity, we're always using the IconTitlePadding value
+		// defined in getMockApp()
+		want [2]float64
+	}{
+		{"ebitenImgSize: 640x480, iconSize: 200x200", dimensions[float64]{640, 480}, dimensions[float64]{200, 200}, [2]float64{220, 130}},
+		{"ebitenImgSize: 640x480, iconSize: 640x460", dimensions[float64]{640, 480}, dimensions[float64]{640, 460}, [2]float64{0, 0}},
+		{"ebitenImgSize: 640x480, iconSize: 300x30", dimensions[float64]{640, 480}, dimensions[float64]{300, 30}, [2]float64{170, 215}},
+		{"ebitenImgSize: 640x480, iconSize: 30x300", dimensions[float64]{640, 480}, dimensions[float64]{30, 300}, [2]float64{305, 80}},
+	}
+
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
+
+			a.entryImgDim = tests[i].ebitenImgDim
+			eImg := a.newEntryImg(tests[i].name)
+			x, y := a.getIconOriginPoint(eImg, tests[i].iconDim)
+
+			if !floatEqual(x, tests[i].want[0]) || !floatEqual(y, tests[i].want[1]) {
+				t.Errorf("want %+v but got %+v", tests[i].want, [2]float64{x, y})
+			}
+		})
+	}
+}
