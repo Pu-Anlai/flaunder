@@ -74,7 +74,9 @@ func getTitleDrawX(eImg *entryImg) float64 {
 // height and width
 func getIconDimensions(e *entry, eImg *entryImg) (float64, float64) {
 	maxWidth := float64(eImg.img.Bounds().Size().X)
-	maxHeight := float64(eImg.img.Bounds().Size().Y)
+	// we need to make sure that sufficient space is still available for the
+	// title and the image title padding after drawing the icon
+	maxHeight := float64(eImg.img.Bounds().Size().Y) - float64(eImg.iconTitPad) - eImg.titleDim.height
 	var height float64
 
 	if e.Icon.isVector {
