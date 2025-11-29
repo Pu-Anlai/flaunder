@@ -47,7 +47,7 @@ type settings struct {
 	Background                icon
 	Font                      font
 	FontSize                  int
-	ImageTitlePadding         measurement
+	IconTitlePadding          measurement
 	TopPadding, BottomPadding measurement
 	LeftPadding, RightPadding measurement
 }

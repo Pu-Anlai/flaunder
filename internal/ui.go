@@ -21,6 +21,11 @@ type app struct {
 	entryImgDim dimensions[float64]
 }
 
+// entryImg contains all information about the graphical representation of an
+// entry. The actual ebiten image is embedded in entryImg.img. It will be drawn
+// to the screen with its origin point at [TopPadding, LeftPadding] set in
+// app.settings. The ebiten image contains a properly aligned icon and title as
+// specified in the entry that entryImg was created from.
 type entryImg struct {
 	img        *ebiten.Image
 	name       string
@@ -88,8 +93,8 @@ func getIconDimensions(e *entry, eImg *entryImg) (float64, float64) {
 	return width, height
 }
 
-// updateMeasurements should be calles whenever there is a layout change. it
-// will recalculate all measurement strings
+// updateMeasurements should be called whenever there is a layout change. It
+// will recalculate all measurement strings.
 func (a *app) updateMeasurements() {
 	height := float64(a.screenDim.height)
 	var wg sync.WaitGroup
@@ -99,11 +104,12 @@ func (a *app) updateMeasurements() {
 	}
 	// initiate all padding fields (without reflect for performance reasons)
 	wg.Add(5)
-	a.settings.ImageTitlePadding.init(height, &wg)
+	a.settings.IconTitlePadding.init(height, &wg)
 	a.settings.TopPadding.init(height, &wg)
 	a.settings.BottomPadding.init(height, &wg)
 	a.settings.LeftPadding.init(height, &wg)
 	a.settings.RightPadding.init(height, &wg)
+	wg.Wait()
 }
 
 // drawIconOnEntryImg calculates the dimensions and position for the icon in
@@ -150,9 +156,9 @@ func (a *app) drawTitleOnEntryImg(e *entry, eImg *entryImg) {
 	a.mut.Unlock()
 }
 
-// getEntryImg creates an entryImage for an entry reading e and respecting maxHeight
-// and fontHeight
-func (a *app) getEntryImg(e *entry, eImg *entryImg, wg *sync.WaitGroup) {
+// getEntryEbitenImg creates an ebiten image, draws the icon and the title onto
+// it and stores it in eImg.img. eImg is then appended to a.images.
+func (a *app) getEntryEbitenImg(e *entry, eImg *entryImg, wg *sync.WaitGroup) {
 	defer wg.Done()
 	eImg.img = ebiten.NewImage(int(eImg.dim.width), int(eImg.dim.height))
 	a.drawIconOnEntryImg(e, eImg)
@@ -169,8 +175,9 @@ func (a *app) newEntryImg(title string) *entryImg {
 	img.name = title
 	img.dim.height = a.entryImgDim.height
 	img.dim.width = a.entryImgDim.width
-	img.imgTitPad = int(a.settings.ImageTitlePadding.abs)
-	img.titleWidth, _ = text.Measure(title, a.settings.Font.face, 0)
+	img.iconTitPad = int(a.settings.IconTitlePadding.abs)
+	img.titleDim.width, _ = text.Measure(title, a.settings.Font.face, 0)
+	img.titleDim.height = a.settings.Font.height
 	return img
 }
 
@@ -187,16 +194,17 @@ func (a *app) generateEntryImgs() error {
 		eImg := a.newEntryImg(a.entries[i].Name)
 		a.images = append(a.images, eImg)
 		wg.Add(1)
-		go a.getEntryImg(&a.entries[i], eImg, &wg)
+		go a.getEntryEbitenImg(&a.entries[i], eImg, &wg)
 	}
 	wg.Wait()
+	// TODO: sort a.images
 	return nil
 }
 
 // validateDimensions checks if the provided dimensions leave enough room to
 // actually draw the required elements of each entry
 func (a *app) validateDimensions() error {
-	imgHeight := float64(a.screenDim.height) - a.settings.Font.height - a.settings.TopPadding.abs - a.settings.BottomPadding.abs - a.settings.ImageTitlePadding.abs
+	imgHeight := float64(a.screenDim.height) - a.settings.Font.height - a.settings.TopPadding.abs - a.settings.BottomPadding.abs - a.settings.IconTitlePadding.abs
 	if int(math.Round(imgHeight+0.5)) < 1 {
 		return &dimensionError{}
 	} else {
