@@ -102,7 +102,7 @@ func readIntoStruct[T any](sec *ini.Section, dst *T) error {
 		// if there is an ini key that is not in our struct dst, return an error
 		field, ok := fieldMap[key.Name()]
 		if !ok {
-			return &iniParseError{key: key.Name(), section: sec.Name()}
+			return &iniParseError{key: key.Name(), value: key.Value(), section: sec.Name()}
 		}
 		// now that we have the StructField corresponding to the key name in the
 		// ini file, we can look up the value of that field in our instance v
@@ -114,13 +114,13 @@ func readIntoStruct[T any](sec *ini.Section, dst *T) error {
 			fieldVal.SetString(key.Value())
 		case reflect.Int:
 			if val, err := strconv.Atoi(key.Value()); err != nil {
-				return &iniParseError{key: key.Name(), section: sec.Name()}
+				return &iniParseError{key: key.Name(), value: key.Value(), section: sec.Name()}
 			} else {
 				fieldVal.SetInt(int64(val))
 			}
 		case reflect.Bool:
 			if val, err := strconv.ParseBool(key.Value()); err != nil {
-				return &iniParseError{key: key.Name(), section: sec.Name()}
+				return &iniParseError{key: key.Name(), value: key.Value(), section: sec.Name()}
 			} else {
 				fieldVal.SetBool(val)
 			}
