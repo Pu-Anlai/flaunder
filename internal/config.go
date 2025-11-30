@@ -72,6 +72,7 @@ func readIniFile(path string) (*ini.File, error) {
 
 type settings struct {
 	Background                icon
+	BackgroundScale           bool
 	Font                      font
 	FontSize                  int
 	IconTitlePadding          measurement
@@ -116,6 +117,12 @@ func readIntoStruct[T any](sec *ini.Section, dst *T) error {
 				return &iniParseError{key: key.Name(), section: sec.Name()}
 			} else {
 				fieldVal.SetInt(int64(val))
+			}
+		case reflect.Bool:
+			if val, err := strconv.ParseBool(key.Value()); err != nil {
+				return &iniParseError{key: key.Name(), section: sec.Name()}
+			} else {
+				fieldVal.SetBool(val)
 			}
 		default:
 			// if the field is not a built-in type, check if it implements
