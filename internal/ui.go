@@ -1,12 +1,25 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/text/v2"
 )
+
+type dimensionError struct {
+	entryName string
+}
+
+func (e *dimensionError) Error() string {
+	if e.entryName == "" {
+		return fmt.Sprintf("global settings do not leave enough space for drawing elements")
+	} else {
+		return fmt.Sprintf("settings for %q do not leave enough space for drawing all its elements", e.entryName)
+	}
+}
 
 type dimensions[T int | float64] struct {
 	width, height T

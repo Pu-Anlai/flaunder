@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"image"
 	_ "image/jpeg"
@@ -17,6 +18,18 @@ import (
 	"github.com/tdewolff/canvas"
 	"github.com/tdewolff/canvas/renderers/rasterizer"
 )
+
+type fileDecodeError struct {
+	path     string
+	fileType string
+}
+
+func (e *fileDecodeError) Error() string {
+	return fmt.Sprintf("cannot decode file %q. valid %s file?", e.path, e.fileType)
+}
+
+//go:embed assets/Roboto-Regular.ttf
+var fbFont []byte
 
 const dpi float64 = 96
 
