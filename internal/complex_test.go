@@ -6,20 +6,29 @@ import (
 	"testing"
 )
 
-func TestIconValidate(t *testing.T) {
-	// test non existing paths throwing an error, otherwise validation should be
-	// covered by TestIconInit
+// getInvalidPath returns a path that is guaranteed to not exist
+func getInvalidPath() (string, error) {
 	tmpFile, err := os.CreateTemp("", "throw-away-*")
 	if err != nil {
-		t.Fatal(err)
+		return "", err
 	}
 	path := tmpFile.Name()
 
 	if err := tmpFile.Close(); err != nil {
-		t.Fatal(err)
+		return "", err
 	}
 
 	if err := os.Remove(path); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+func TestIconValidate(t *testing.T) {
+	// test non existing paths throwing an error, otherwise validation should be
+	// covered by TestIconInit
+	path, err := getInvalidPath()
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -27,7 +36,6 @@ func TestIconValidate(t *testing.T) {
 	if err := i.validate(); err == nil {
 		t.Error("icon did not fail to validate despite invalid path")
 	}
-
 }
 
 func TestIconInit(t *testing.T) {
@@ -164,4 +172,18 @@ func TestMeasurement(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFontValidate(t *testing.T) {
+	var f font
+	path, err := getInvalidPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.path = path
+	if err := f.validate(); err == nil {
+		t.Error("font did not fail to validate despite invalid path")
+	}
+
 }
