@@ -32,6 +32,7 @@ type app struct {
 	images      []*entryImg
 	screenDim   dimensions[int]
 	entryImgDim dimensions[float64]
+	background  *ebiten.Image
 }
 
 // entryImg contains all information about the graphical representation of an
@@ -66,7 +67,26 @@ func (a *app) Update() error {
 }
 
 func (a *app) Draw(screen *ebiten.Image) {
-	return
+
+}
+
+// setBackground creates an ebiten image containing the background image, scales
+// it to fit the screen (if BackgroundScale is true) and stores it in the app's
+// background field
+func (a *app) setBackground() error {
+	bg := &a.settings.Background // shorthand so things don't get too unwieldy
+	if a.background == nil {
+		a.background = ebiten.NewImageFromImage(bg.image)
+	}
+	if !a.settings.BackgroundScale {
+		w := a.screenDim.width
+		h := w * (bg.dim.height / bg.dim.width)
+		if h > a.screenDim.height {
+			h = a.screenDim.height
+			w = h * (bg.dim.width / bg.dim.height)
+		}
+		a.background.
+	}
 }
 
 // getTitleOriginPoint calculates the origin point for drawing the title onto
