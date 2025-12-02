@@ -98,16 +98,8 @@ func getTitleOriginPoint(eImg *entryImg) (x, y float64) {
 	//      (canvasWidth - titleWidth) / 2
 	// - y: height of the canvas minus the title height
 	// 	 	(canvasHeight - titleHeight)
-	// the title may overlap lengthwise, in that case:
-	// -x: the x origin point of the canvas minus the difference of the width of
-	//     the title and the width of the canvas divided by two
-	//     canvasWidth - ((titleWidth - canvasWidth) / 2)
 	canvasWidth := eImg.dim.width
-	if eImg.titleDim.width > canvasWidth {
-		x = 0 - ((eImg.titleDim.width - canvasWidth) / 2)
-	} else {
-		x = (canvasWidth - eImg.titleDim.width) / 2
-	}
+	x = (canvasWidth - eImg.titleDim.width) / 2
 	y = eImg.dim.height - eImg.titleDim.height
 	return x, y
 }
