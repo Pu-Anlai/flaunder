@@ -89,6 +89,24 @@ func (a *app) setBackground() error {
 	}
 }
 
+// updateMeasurements should be called whenever there is a layout change. It
+// will recalculate all measurement strings.
+func (a *app) updateMeasurements() {
+	height := float64(a.screenDim.height)
+	var wg sync.WaitGroup
+	for i := range a.entries {
+		wg.Add(1)
+		go a.entries[i].IconHeight.init(height, &wg)
+	}
+	// initiate all padding fields (without reflect for performance reasons)
+	wg.Add(5)
+	a.settings.IconTitlePadding.init(height, &wg)
+	a.settings.TopPadding.init(height, &wg)
+	a.settings.BottomPadding.init(height, &wg)
+	a.settings.LeftPadding.init(height, &wg)
+	a.settings.RightPadding.init(height, &wg)
+	wg.Wait()
+}
 // getTitleOriginPoint calculates the origin point for drawing the title onto
 // eImg so that it is aligned centrally on the x axis and on top of the bottom
 // padding on the y axis
@@ -107,7 +125,7 @@ func getTitleOriginPoint(eImg *entryImg) (x, y float64) {
 // getIconDimensions takes height, compares it with the maximal height available
 // on eImg and uses the smaller value to compute width; it returnes the correct
 // height and width
-func getIconDimensions(e *entry, eImg *entryImg) (float64, float64) {
+func getIconDimensions(e *entry, eImg *entryImg) dimensions[float64] {
 	maxWidth := float64(eImg.img.Bounds().Size().X)
 	// we need to make sure that sufficient space is still available for the
 	// title and the image title padding after drawing the icon
@@ -127,26 +145,9 @@ func getIconDimensions(e *entry, eImg *entryImg) (float64, float64) {
 		width = maxWidth
 		height = e.Icon.calculateWithAspectRatio(width, false)
 	}
-	return width, height
+	return dimensions[float64]{width, height}
 }
 
-// updateMeasurements should be called whenever there is a layout change. It
-// will recalculate all measurement strings.
-func (a *app) updateMeasurements() {
-	height := float64(a.screenDim.height)
-	var wg sync.WaitGroup
-	for i := range a.entries {
-		wg.Add(1)
-		go a.entries[i].IconHeight.init(height, &wg)
-	}
-	// initiate all padding fields (without reflect for performance reasons)
-	wg.Add(5)
-	a.settings.IconTitlePadding.init(height, &wg)
-	a.settings.TopPadding.init(height, &wg)
-	a.settings.BottomPadding.init(height, &wg)
-	a.settings.LeftPadding.init(height, &wg)
-	a.settings.RightPadding.init(height, &wg)
-	wg.Wait()
 }
 
 // getIconOriginPoint calculates the origin point for drawing the icon onto eImg
@@ -168,14 +169,14 @@ func getIconOriginPoint(eImg *entryImg, iconDim dimensions[float64]) (x, y float
 // drawIconOnEntryImg calculates the dimensions and position for the icon in
 // e and draws it onto entryImg
 func (a *app) drawIconOnEntryImg(e *entry, eImg *entryImg) {
-	icon := ebiten.NewImageFromImage(e.Icon.image)
+	ebitIcon := ebiten.NewImageFromImage(e.Icon.image)
 	iconOpt := &ebiten.DrawImageOptions{}
 	iconWidth, iconHeight := getIconDimensions(e, eImg)
 	iconOpt.GeoM.Scale(iconWidth, iconHeight)
 
-	iconX, iconY := getIconOriginPoint(eImg, dimensions[float64]{iconWidth, iconHeight})
+	iconX, iconY := getIconOriginPoint(eImg, iconDim)
 	iconOpt.GeoM.Translate(iconX, iconY)
-	icon.DrawImage(eImg.img, iconOpt)
+	ebitIcon.DrawImage(eImg.img, iconOpt)
 }
 
 // drawTitleOnEntryImg calculates the dimensions and position for the title in e
