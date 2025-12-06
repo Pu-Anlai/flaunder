@@ -70,10 +70,10 @@ func (a *app) Draw(screen *ebiten.Image) {
 
 }
 
-// setBackground creates an ebiten image containing the background image, scales
+// setBg creates an ebiten image containing the background image, scales
 // it to fit the screen (if BackgroundScale is true) and stores it in the app's
 // background field
-func (a *app) setBackground() error {
+func (a *app) setBg() error {
 	bg := &a.settings.Background // shorthand so things don't get too unwieldy
 	if a.background == nil {
 		a.background = ebiten.NewImageFromImage(bg.image)
@@ -85,7 +85,7 @@ func (a *app) setBackground() error {
 			h = a.screenDim.height
 			w = h * (bg.dim.width / bg.dim.height)
 		}
-		a.background.
+		scaleFactor := dimensionsToScaleFactor(a.background, dimensions[float64]{float64(w), float64(h)})
 	}
 }
 
@@ -107,6 +107,16 @@ func (a *app) updateMeasurements() {
 	a.settings.RightPadding.init(height, &wg)
 	wg.Wait()
 }
+
+// dimensionsToScaleFactor calculates the scale factor to scale ebitImg to
+// targetDim. It returns an array containing the width and height scale factor.
+func dimensionsToScaleFactor(img image.Image, targetDim dimensions[float64]) [2]float64 {
+	origSize := img.Bounds().Size()
+	w := targetDim.width / float64(origSize.X)
+	h := targetDim.height / float64(origSize.Y)
+	return [2]float64{w, h}
+}
+
 // getTitleOriginPoint calculates the origin point for drawing the title onto
 // eImg so that it is aligned centrally on the x axis and on top of the bottom
 // padding on the y axis
@@ -171,8 +181,9 @@ func getIconOriginPoint(eImg *entryImg, iconDim dimensions[float64]) (x, y float
 func (a *app) drawIconOnEntryImg(e *entry, eImg *entryImg) {
 	ebitIcon := ebiten.NewImageFromImage(e.Icon.image)
 	iconOpt := &ebiten.DrawImageOptions{}
-	iconWidth, iconHeight := getIconDimensions(e, eImg)
-	iconOpt.GeoM.Scale(iconWidth, iconHeight)
+	iconDim := getIconDimensions(e, eImg)
+	scaleFactor := dimensionsToScaleFactor(ebitIcon, iconDim)
+	iconOpt.GeoM.Scale(scaleFactor[0], scaleFactor[1])
 
 	iconX, iconY := getIconOriginPoint(eImg, iconDim)
 	iconOpt.GeoM.Translate(iconX, iconY)
