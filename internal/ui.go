@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image"
 	"math"
 	"sync"
 
@@ -25,6 +26,11 @@ type dimensions[T int | float64] struct {
 	width, height T
 }
 
+type background struct {
+	image     *ebiten.Image
+	imageOpts *ebiten.DrawImageOptions
+}
+
 type app struct {
 	mut         *sync.Mutex
 	settings    *settings
@@ -32,7 +38,7 @@ type app struct {
 	images      []*entryImg
 	screenDim   dimensions[int]
 	entryImgDim dimensions[float64]
-	background  *ebiten.Image
+	bg          background
 }
 
 // entryImg contains all information about the graphical representation of an
@@ -70,22 +76,24 @@ func (a *app) Draw(screen *ebiten.Image) {
 
 }
 
-// setBg creates an ebiten image containing the background image, scales
+// updateBg creates an ebiten image containing the background image, scales
 // it to fit the screen (if BackgroundScale is true) and stores it in the app's
 // background field
-func (a *app) setBg() error {
+func (a *app) updateBg() {
 	bg := &a.settings.Background // shorthand so things don't get too unwieldy
-	if a.background == nil {
-		a.background = ebiten.NewImageFromImage(bg.image)
-	}
-	if !a.settings.BackgroundScale {
-		w := a.screenDim.width
-		h := w * (bg.dim.height / bg.dim.width)
-		if h > a.screenDim.height {
+
+	if a.settings.BackgroundScale {
+		var w, h int
+		if (bg.dim.width / a.screenDim.width) > (bg.dim.height / a.screenDim.height) {
+			w = a.screenDim.width
+			h = w * (bg.dim.height / bg.dim.width)
+		} else {
 			h = a.screenDim.height
 			w = h * (bg.dim.width / bg.dim.height)
 		}
-		scaleFactor := dimensionsToScaleFactor(a.background, dimensions[float64]{float64(w), float64(h)})
+		a.bg.imageOpts.GeoM.Reset()
+		scaleFactor := dimensionsToScaleFactor(a.bg.image, dimensions[float64]{float64(w), float64(h)})
+		a.bg.imageOpts.GeoM.Scale(scaleFactor[0], scaleFactor[1])
 	}
 }
 
@@ -126,8 +134,7 @@ func getTitleOriginPoint(eImg *entryImg) (x, y float64) {
 	//      (canvasWidth - titleWidth) / 2
 	// - y: height of the canvas minus the title height
 	// 	 	(canvasHeight - titleHeight)
-	canvasWidth := eImg.dim.width
-	x = (canvasWidth - eImg.titleDim.width) / 2
+	x = (eImg.dim.width - eImg.titleDim.width) / 2
 	y = eImg.dim.height - eImg.titleDim.height
 	return x, y
 }
@@ -158,6 +165,12 @@ func getIconDimensions(e *entry, eImg *entryImg) dimensions[float64] {
 	return dimensions[float64]{width, height}
 }
 
+// getBgOriginPoint calculates the origin point for drawing the background
+func (a *app) getBgOriginPoint(canvasDim, bgDim dimensions[float64]) (x, y float64) {
+	// x and y are both set to an origin point that should center the image
+	x = (canvasDim.width - bgDim.width) / 2
+	y = (canvasDim.height - bgDim.height) / 2
+	return x, y
 }
 
 // getIconOriginPoint calculates the origin point for drawing the icon onto eImg
@@ -266,6 +279,13 @@ func (a *app) init() error {
 			return err
 		}
 	}
+
+	// set up background
+	if err := a.settings.Background.init(); err != nil {
+		return err
+	}
+	a.bg.image = ebiten.NewImageFromImage(a.settings.Background.image)
+	a.bg.imageOpts = &ebiten.DrawImageOptions{}
 
 	// load font
 	if err := a.settings.Font.init(float64(a.settings.FontSize)); err != nil {
