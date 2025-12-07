@@ -92,9 +92,9 @@ func TestGetIconDimensions(t *testing.T) {
 			// eImg.img
 			eImg.img = ebiten.NewImage(int(eImg.dim.width), int(eImg.dim.height))
 
-			x, y := getIconDimensions(&e, eImg)
-			if !floatEqual(x, tests[i].outputDim[0]) || !floatEqual(y, tests[i].outputDim[1]) {
-				t.Errorf("%s icon: wanted dimensions %f, %f but got %f, %f", tests[i].ft, tests[i].outputDim[0], tests[i].outputDim[1], x, y)
+			iconDim := getIconDimensions(&e, eImg)
+			if !floatEqual(iconDim.width, tests[i].outputDim[0]) || !floatEqual(iconDim.height, tests[i].outputDim[1]) {
+				t.Errorf("%s icon: wanted dimensions %+v but got %+v", tests[i].ft, tests[i].outputDim, iconDim)
 			}
 		})
 	}

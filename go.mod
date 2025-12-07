@@ -1,4 +1,4 @@
-module github.com/Pu-Anlai/flaunder
+module github.com/Pu-Anlai/flunder
 
 go 1.25.1
 
