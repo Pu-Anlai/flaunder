@@ -160,3 +160,14 @@ func TestGetTitleOriginPoint(t *testing.T) {
 		})
 	}
 }
+
+// TestVisualConfirm is not a real test but a helper function for visual
+// confirmation. It should be run isolated by passing its name to the -run flag
+// of the go test utility. To avoid the function being executed during regular
+// test runs, it will return immediately unless the environment variable
+// FLUNDER_VISUAL_TEST is set to "yes".
+func TestVisualConfirm(t *testing.T) {
+	if os.Getenv("FLUNDER_VISUAL_TEST") != "yes" {
+		return
+	}
+}
