@@ -306,11 +306,6 @@ func getApp(conf *config) *app {
 
 // runGui creates a GUI using the settings taken from conf
 func runGui(conf *config) error {
-	conf, err := getConfig()
-	if err != nil {
-		return err
-	}
-
 	a := getApp(conf)
 	if err := a.init(); err != nil {
 		return err
