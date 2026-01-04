@@ -185,9 +185,13 @@ func validateConfig(conf *config) error {
 	return nil
 }
 
-// validateSettings runs validate on all option fields in the object c
+// validateSettings runs validate on all option fields in the object s
 func validateSettings[T settings | entry](s *T) error {
 	v := reflect.ValueOf(s).Elem()
+	// if there are no options in s, we can consider the object valid
+	if !v.IsValid() {
+		return nil
+	}
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
 		if !f.CanInterface() {
