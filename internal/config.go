@@ -208,14 +208,19 @@ func validateSettings[T settings | entry](s *T) error {
 	return nil
 }
 
-// getConfig reads the config file at path, creates a config struct based on its
-// content and returns a pointer to the config
-func getConfig() (*config, error) {
+// getConfigPath returns the path to the config file
+func getConfigPath() (string, error) {
 	home, err := os.UserConfigDir()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	ini, err := readIniFile(filepath.Join(home, "fyne-idim", "config"))
+	return filepath.Join(home, "flunder", "config"), nil
+}
+
+// getConfig reads the config file at path, creates a config struct based on its
+// content and returns a pointer to the config
+func getConfig(path string) (*config, error) {
+	ini, err := readIniFile(path)
 	if err != nil {
 		return nil, err
 	}

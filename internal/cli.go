@@ -12,9 +12,15 @@ func printErrorAndExit(e error) {
 }
 
 func main() {
-	conf, err := getConfig()
+	confPath, err := getConfigPath()
 	if err != nil {
 		printErrorAndExit(err)
 	}
+
+	conf, err := getConfig(confPath)
+	if err != nil {
+		printErrorAndExit(err)
+	}
+
 	runGui(conf)
 }
