@@ -79,18 +79,27 @@ func getMockImage(dim dimensions[int]) image.Image {
 	return img
 }
 
+// getTmpFile creates a temporary file with the extension ext and returns its
+// file object. Not being able to create the temp file will cause a panic.
+// Remember to close and delete the file.
+func getTmpFile(ext string) *os.File {
+	// add a dot in front of the extension string if one was passed
+	if ext != "" {
+		ext = "." + ext
+	}
+	template := fmt.Sprintf("flunder-tmpfile-*%s", ext)
+	tmpFile, err := os.CreateTemp("", template)
+	if err != nil {
+		panic(err)
+	}
+	return tmpFile
+}
+
 // getMockIcon creates a mock image file and an icon struct, whose path field
 // points to the file. REMEMBER to delete the file at icon.path after testing is
 // completed
 func getMockIcon(dim dimensions[int], ft string) (*icon, error) {
-	// one err variable so we can use it in the switch statement below
-	var err error
-	tmpFileTempl := fmt.Sprintf("img-file-*.%s", ft)
-
-	tmpFile, err := os.CreateTemp("", tmpFileTempl)
-	if err != nil {
-		return nil, err
-	}
+	tmpFile := getTmpFile(ft)
 	defer tmpFile.Close()
 
 	var img image.Image
@@ -101,6 +110,7 @@ func getMockIcon(dim dimensions[int], ft string) (*icon, error) {
 		img = getMockImage(dim)
 	}
 
+	var err error // reusable err variable
 	switch ft {
 	case "png":
 		err = png.Encode(tmpFile, img)
