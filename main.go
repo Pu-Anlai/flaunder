@@ -13,15 +13,15 @@ func printErrorAndExit(e error) {
 }
 
 func main() {
-	confPath, err := getConfigPath()
+	confPath, err := flunder.GetConfigPath()
 	if err != nil {
 		printErrorAndExit(err)
 	}
 
-	conf, err := getConfig(confPath)
+	conf, err := flunder.GetConfig(confPath)
 	if err != nil {
 		printErrorAndExit(err)
 	}
 
-	runGui(conf)
+	flunder.RunGui(conf)
 }

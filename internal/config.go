@@ -1,4 +1,4 @@
-package main
+package flunder
 
 import (
 	"errors"
@@ -212,8 +212,8 @@ func validateSettings[T settings | entry](s *T) error {
 	return nil
 }
 
-// getConfigPath returns the path to the config file
-func getConfigPath() (string, error) {
+// GetConfigPath returns the path to the config file
+func GetConfigPath() (string, error) {
 	home, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
@@ -221,9 +221,9 @@ func getConfigPath() (string, error) {
 	return filepath.Join(home, "flunder", "config"), nil
 }
 
-// getConfig reads the config file at path, creates a config struct based on its
+// GetConfig reads the config file at path, creates a config struct based on its
 // content and returns a pointer to the config
-func getConfig(path string) (*config, error) {
+func GetConfig(path string) (*config, error) {
 	ini, err := readIniFile(path)
 	if err != nil {
 		return nil, err

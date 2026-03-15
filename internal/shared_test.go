@@ -1,4 +1,4 @@
-package main
+package flunder
 
 import (
 	"fmt"
@@ -10,6 +10,8 @@ import (
 	"os"
 	"slices"
 )
+
+var ColorRed color.Color = color.RGBA{255, 0, 0, 255}
 
 // floatEqual compares two floats and returns true if they are within a range
 // that would make them considered equal in general usage
@@ -70,11 +72,16 @@ func getMockSvg(dim dimensions[int]) []byte {
 // getMockImage creates an image of a red rectangle of size dim and returns it
 func getMockImage(dim dimensions[int]) image.Image {
 	img := image.NewRGBA(image.Rect(0, 0, dim.width, dim.height))
-	// fill with red
+	// draw a red border
+	// top and bottom
 	for x := 0; x < dim.width; x++ {
-		for y := 0; y < dim.height; y++ {
-			img.Set(x, y, color.RGBA{255, 0, 0, 255})
-		}
+		img.Set(x, 0, ColorRed)
+		img.Set(x, dim.height, ColorRed)
+	}
+	// left and right
+	for y := 0; y < dim.height; y++ {
+		img.Set(0, y, ColorRed)
+		img.Set(dim.width, y, ColorRed)
 	}
 	return img
 }

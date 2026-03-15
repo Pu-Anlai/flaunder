@@ -1,4 +1,4 @@
-package main
+package flunder
 
 import (
 	"fmt"
@@ -304,8 +304,8 @@ func getApp(conf *config) *app {
 	return a
 }
 
-// runGui creates a GUI using the settings taken from conf
-func runGui(conf *config) error {
+// RunGui creates a GUI using the settings taken from conf
+func RunGui(conf *config) error {
 	a := getApp(conf)
 	if err := a.init(); err != nil {
 		return err
