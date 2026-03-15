@@ -35,6 +35,8 @@ const dpi float64 = 96
 
 type complexOption interface {
 	setBaseField(string)
+	getBaseField() string
+	validate() error
 }
 
 type icon struct {
@@ -61,6 +63,10 @@ type measurement struct {
 
 func (i *icon) setBaseField(v string) {
 	i.path = v
+}
+
+func (i *icon) getBaseField() string {
+	return i.path
 }
 
 // validate returns nil if i points to a supported image file, otherwise it
@@ -191,6 +197,10 @@ func (f *font) setBaseField(v string) {
 	f.path = v
 }
 
+func (f *font) getBaseField() string {
+	return f.path
+}
+
 // validate checks if path points to a valid font file
 func (f *font) validate() error {
 	f.valid = true
@@ -231,6 +241,10 @@ func (m *measurement) init(rel float64, wg *sync.WaitGroup) {
 
 func (m *measurement) setBaseField(v string) {
 	m.value = v
+}
+
+func (m *measurement) getBaseField() string {
+	return m.value
 }
 
 // validate makes sure measurement follows one of the allowed patterns

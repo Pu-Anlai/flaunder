@@ -20,9 +20,9 @@ type iniParseError struct {
 
 func (e *iniParseError) Error() string {
 	if e.section == "" {
-		return fmt.Sprintf("%s: cannot parse key %q (value %q)", e.section, e.key, e.value)
-	} else {
 		return fmt.Sprintf("cannot parse key %q (value %q)", e.key, e.value)
+	} else {
+		return fmt.Sprintf("%s: cannot parse key %q (value %q)", e.section, e.key, e.value)
 	}
 }
 
@@ -44,10 +44,6 @@ type entry struct {
 	Icon       icon
 	IconHeight measurement
 	Command    string
-}
-
-type option interface {
-	validate() error
 }
 
 // readIniFile reads an ini file with a set of preset options
@@ -203,9 +199,9 @@ func validateSettings[T settings | entry](s *T) error {
 			continue
 		}
 
-		if opt, ok := f.Addr().Interface().(option); ok {
+		if opt, ok := f.Addr().Interface().(complexOption); ok {
 			if err := opt.validate(); err != nil {
-				return &iniParseError{key: f.Type().Name(), value: f.String()}
+				return &iniParseError{key: v.Type().Field(i).Name, value: opt.getBaseField()}
 			}
 		}
 	}
