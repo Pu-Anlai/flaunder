@@ -1,4 +1,4 @@
-module github.com/Pu-Anlai/flunder
+module github.com/RealFerdinandDeSaussure/flunder
 
 go 1.25.1
 
